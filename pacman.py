@@ -13,3 +13,9 @@ if len(sys.argv) != 2:
 config = paclib.Config.get_config(sys.argv[1])
 if config is None:
     exit(1)
+
+
+choice: str | None = "play"
+
+while choice != "exit":
+    choice = paclib.HomePage.run()
