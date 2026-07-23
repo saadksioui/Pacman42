@@ -1,6 +1,10 @@
-def main():
-    print("Hello from pacman42!")
+import sys
 
 
-if __name__ == "__main__":
-    main()
+
+if len(sys.argv) != 2:
+    if len(sys.argv) == 1:
+        print("no config file was provided")
+    else:
+        print("the program take exactly one argument")
+    exit(1)
