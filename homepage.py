@@ -5,9 +5,10 @@ rl.init_window(10, 10, "Pacman")
 SCREEN_WIDTH = rl.get_monitor_width(rl.get_current_monitor())
 SCREEN_HEIGHT = rl.get_monitor_height(rl.get_current_monitor())
 rl.set_window_size(SCREEN_WIDTH, SCREEN_HEIGHT)
+rl.toggle_fullscreen()
 
 # bottom consts
-BOTTOM_SECTION_HEIGHT = SCREEN_HEIGHT * 65 / 100
+BOTTOM_SECTION_HEIGHT = SCREEN_HEIGHT * 40 / 100
 BOTTOM_PADDING = SCREEN_WIDTH * 7 / 100
 BUTTON_SPACING = 15
 
@@ -32,7 +33,7 @@ class HomeButton:
             int(self.rectangle.height),
             rl.WHITE if not self.selected else rl.YELLOW,
         )
-        font_size = int((self.rectangle.height - 15) // 2)
+        font_size = int((self.rectangle.height) / 2)
         txt_width = rl.measure_text(self.text, font_size)
         rl.draw_text(
             self.text,
@@ -45,7 +46,7 @@ class HomeButton:
     @classmethod
     def create(cls, options: list[str]) -> list["HomeButton"]:
         BUTTON_HEIGHT = (BOTTOM_SECTION_HEIGHT - BOTTOM_PADDING * 2 + BUTTON_SPACING * len(options)) / len(options)
-        BUTTON_WIDTH = BUTTON_HEIGHT * 3
+        BUTTON_WIDTH = BUTTON_HEIGHT * 5
         buttons = []
         for i, text in enumerate(options):
             buttons.append(
@@ -53,8 +54,7 @@ class HomeButton:
                     text,
                     rl.Rectangle(
                         int(SCREEN_WIDTH / 2 - BUTTON_WIDTH / 2),
-                        int(SCREEN_HEIGHT
-                        - BOTTOM_SECTION_HEIGHT
+                        int(BOTTOM_SECTION_HEIGHT
                         + BOTTOM_PADDING
                         + i * (BUTTON_HEIGHT + BUTTON_SPACING)),
                         int(BUTTON_WIDTH),
@@ -66,13 +66,31 @@ class HomeButton:
         return buttons
 
 
+class Logo:
+    texture: rl.Texture = rl.load_texture("assets/logo.png")
+    SCALE = (SCREEN_HEIGHT * 35 / 100 - SCREEN_HEIGHT * 15 / 100) / texture.height
+
+    @classmethod
+    def draw(cls) -> None:
+        rl.draw_texture_ex(
+            cls.texture,
+            rl.Vector2(
+                (SCREEN_WIDTH / 2 - cls.texture.width * cls.SCALE / 2),
+                SCREEN_HEIGHT * 15 / 2 / 100
+            ),
+            0.0,    # rotation
+            cls.SCALE,
+            rl.WHITE
+        )
+
+
 class HomePage:
     @staticmethod
     def buttons(
         buttons: list[HomeButton],
         mouse_pressed: bool,
         mouse_position: rl.Vector2
-    ) -> str | None: 
+    ) -> str | None:
         for b in buttons:
             b.draw()
             if rl.check_collision_point_rec(mouse_position, b.rectangle):
@@ -83,17 +101,16 @@ class HomePage:
                     10,
                     rl.BLACK,
                 )
-
-
-        
+        return None
 
     @classmethod
     def run(cls) -> str | None:
         buttons: list[HomeButton] = HomeButton.create(["play", "score", "exit"])
-        clicked_button:str | None = None
+        clicked_button: str | None = None
         while not rl.window_should_close():
             rl.begin_drawing()
             rl.clear_background(rl.BLACK)
+            Logo.draw()
             clicked_button = cls.buttons(
                 buttons,
                 rl.is_mouse_button_pressed(rl.MOUSE_BUTTON_LEFT),
