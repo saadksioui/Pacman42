@@ -3,6 +3,7 @@ from paclib.parser import Config
 from paclib.classes import Pacman, Ghost, Position
 from typing import List
 
+
 class GameState(Enum):
     MENU = "menu"
     PLAY = "play"
@@ -18,10 +19,10 @@ class Game:
         self.configs = config
         self.pacman = Pacman(Position(10, 10), config.lives)
         self.ghosts = [
-            Ghost("Void", Position(5, 5)),
-            Ghost("Ubik", Position(5, 5)),
-            Ghost("Femto", Position(5, 5)),
-            Ghost("Conrad", Position(5, 5)),
+            Ghost("Blinky", Position(5, 5)),
+            Ghost("Pinky", Position(5, 5)),
+            Ghost("Inky", Position(5, 5)),
+            Ghost("Clyde", Position(5, 5)),
         ]
         self.score: int = 0
         self.power_timer: float = 0.0
@@ -43,7 +44,8 @@ class Game:
             self._change_pacman_state()
 
         for ghost in self.ghosts:
-            if self.pacman.pos.x == ghost.pos.x and self.pacman.pos.y == ghost.pos.y:
+            if (self.pacman.pos.x == ghost.pos.x
+                    and self.pacman.pos.y == ghost.pos.y):
                 if ghost.state == ghost.State.FRIGHTENED:
                     ghost.state = ghost.State.EATEN
                     self.score += 200
@@ -60,7 +62,7 @@ class Game:
         for ghost in self.ghosts:
             if ghost.state == ghost.State.FRIGHTENED:
                 ghost.state = ghost.State.CHASE
-    
+
     def _pacman_death(self):
         self.pacman.lives -= 1
         if self.pacman.lives == 0:
@@ -69,7 +71,7 @@ class Game:
             self.pacman.pos.x = 10
             self.pacman.pos.y = 10
 
-    def _rendring(self):
+    def _rendering(self):
         pass
 
     def run(self):
@@ -77,4 +79,4 @@ class Game:
             self._user_inputs()
             self._update_entities()
             self._collisions()
-            self._rendring()
+            self._rendering()
