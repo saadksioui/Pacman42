@@ -1,6 +1,6 @@
 from json import JSONDecodeError
 from json import loads as check_valid_json
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError # type: ignore
 import random
 
 

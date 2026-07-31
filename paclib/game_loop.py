@@ -2,6 +2,7 @@ from enum import Enum
 from paclib.parser import Config
 from paclib.classes import Pacman, Ghost, Position
 from typing import List
+import pyray as pr
 
 
 class GameState(Enum):
@@ -17,26 +18,55 @@ class Game:
         self.maze: list[list[int]] = maze
         self.state = GameState.MENU
         self.configs = config
-        self.pacman = Pacman(Position(10, 10), config.lives)
+        self.pacman = Pacman(Position(1, 1), config.lives)
         self.ghosts = [
-            Ghost("Blinky", Position(5, 5)),
-            Ghost("Pinky", Position(5, 5)),
-            Ghost("Inky", Position(5, 5)),
-            Ghost("Clyde", Position(5, 5)),
+            Ghost(Position(5, 5), "Pinky"),
+            Ghost(Position(5, 5), "Inky"),
+            Ghost(Position(5, 5), "Blinky"),
+            Ghost(Position(5, 5), "Clyde"),
         ]
         self.score: int = 0
         self.power_timer: float = 0.0
+        pr.init_window(1080, 1080, "PacMan")
+        pr.set_target_fps(60)
 
     def _user_inputs(self):
-        # Key input
-        pass
+        if pr.is_key_down(pr.KEY_UP):
+            return pr.KEY_UP
+        if pr.is_key_down(pr.KEY_DOWN):
+            return pr.KEY_DOWN
+        if pr.is_key_down(pr.KEY_LEFT):
+            return pr.KEY_LEFT
+        if pr.is_key_down(pr.KEY_RIGHT):
+            return pr.KEY_RIGHT
 
-    def _update_entities(self):
-        pass
+        return 0
+
+    def _update_entities(self, key):
+        new_x = self.pacman.pos.x
+        new_y = self.pacman.pos.y
+
+        if key == pr.KEY_UP:
+            new_y -= 1
+        elif key == pr.KEY_DOWN:
+            new_y += 1
+        elif key == pr.KEY_LEFT:
+            new_x -= 1
+        elif key == pr.KEY_RIGHT:
+            new_x += 1
+        else:
+            return
+
+        if 0 <= new_y < len(self.maze) and 0 <= new_x < len(self.maze[0]):
+            if self.maze[new_y][new_x] != 1:
+                self.pacman.pos.x = new_x
+                self.pacman.pos.y = new_y
 
     def _collisions(self):
         curr_pos = self.maze[self.pacman.pos.y][self.pacman.pos.x]
-        if curr_pos == 10:
+        if curr_pos == 1:
+            pass
+        elif curr_pos == 10:
             self.score += 10
             self.maze[self.pacman.pos.y][self.pacman.pos.x] = 0
         elif curr_pos == 50:
@@ -71,12 +101,77 @@ class Game:
             self.pacman.pos.x = 10
             self.pacman.pos.y = 10
 
+<<<<<<< HEAD
     def _rendering(self):
         pass
+=======
+    def _rendring(self):
+        pr.begin_drawing()
+        pr.clear_background(pr.GRAY)
+
+        if self.state == GameState.MENU:
+            pr.draw_text("PACMAN", 250, 200, 40, pr.YELLOW)
+            pr.draw_text("Press ENTER to Start", 220, 300, 20, pr.WHITE)
+
+            if pr.is_key_pressed(pr.KEY_ENTER):
+                self.state = GameState.PLAY
+
+        elif self.state == GameState.PLAY:
+            cell_size = 24
+
+            for y, row in enumerate(self.maze):
+                for x, cell in enumerate(row):
+                    pixel_x = x * cell_size
+                    pixel_y = y * cell_size
+                    
+                    if cell == 1:
+                        pr.draw_rectangle(pixel_x, pixel_y, cell_size, cell_size, pr.BLACK)
+                    elif cell == 10:
+                        pr.draw_circle(pixel_x + cell_size // 2, pixel_y + cell_size // 2, 3, pr.YELLOW)
+                    elif cell == 50:
+                        pr.draw_circle(pixel_x + cell_size // 2, pixel_y + cell_size // 2, 8, pr.ORANGE)
+
+            ghost_colors = {
+                "Blinky": pr.RED,
+                "Pinky": pr.PINK,
+                "Inky": pr.SKYBLUE,
+                "Clyde": pr.ORANGE
+            }
+
+            for ghost in self.ghosts:
+                gx = ghost.pos.x * cell_size + cell_size // 2
+                gy = ghost.pos.y * cell_size + cell_size // 2
+
+                if ghost.state == ghost.State.FRIGHTENED:
+                    g_color = pr.BLUE
+                elif ghost.state == ghost.State.EATEN:
+                    g_color = pr.DARKGRAY
+                else:
+                    g_color = ghost_colors.get(ghost.name, pr.PURPLE)
+
+                pr.draw_circle(gx, gy, cell_size // 2 - 2, g_color)
+
+            px = self.pacman.pos.x * cell_size + cell_size // 2
+            py = self.pacman.pos.y * cell_size + cell_size // 2
+
+            pr.draw_circle(px, py, cell_size // 2 - 2, pr.YELLOW)
+
+            pr.draw_text(f"Score: {self.score}", 10, 10, 20, pr.WHITE)
+            pr.draw_text(f"Lives: {self.pacman.lives}", 200, 10, 20, pr.WHITE)
+            
+        elif self.state == GameState.PAUSE:
+            pr.draw_text("PAUSED", 250, 250, 40, pr.WHITE)
+            
+        elif self.state == GameState.END:
+            pr.draw_text("GAME OVER", 220, 250, 40, pr.RED)
+            pr.draw_text(f"Final Score: {self.score}", 240, 300, 20, pr.WHITE)
+
+        pr.end_drawing()
+>>>>>>> 2efe7b0 (feat: enhance game functionality with maze generation and visualization, refactor game loop)
 
     def run(self):
-        while self.is_running:
-            self._user_inputs()
-            self._update_entities()
+        while self.is_running and not pr.window_should_close():
+            key = self._user_inputs()
+            self._update_entities(key)
             self._collisions()
             self._rendering()

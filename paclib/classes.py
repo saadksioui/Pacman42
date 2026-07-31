@@ -25,10 +25,10 @@ class Entity(ABC):
     curr_direction: Direction
     speed: float
 
-    def __int__(self, init_pos: Position) -> None:
+    def __init__(self, init_pos: Position) -> None:
         self.pos = init_pos
         self.curr_direction = Direction.NONE
-        self.speed = 1.0
+        self.speed = 0.5
 
     @abstractmethod
     def update(self) -> None:
@@ -64,7 +64,7 @@ class Ghost(Entity):
 
     state: State
 
-    def __init__(self, name: str, init_pos: Position):
+    def __init__(self, init_pos: Position, name: str):
         super().__init__(init_pos)
         self.state = self.State.SCATTER
         self.name = name
