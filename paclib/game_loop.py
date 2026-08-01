@@ -1,8 +1,9 @@
 from enum import Enum
 from paclib.parser import Config
 from paclib.classes import Pacman, Ghost, Position
-from typing import List
+from typing import List, Tuple
 import pyray as pr  # type: ignore
+from collections import deque
 
 
 class GameState(Enum):
@@ -16,6 +17,8 @@ class Game:
     def __init__(self, maze: List[List[int]], config: Config):
         self.is_running: bool = True
         self.maze: list[list[int]] = maze
+        self.rows = len(maze)
+        self.cols = len(maze[0])
         self.state = GameState.MENU
         self.configs = config
         self.pacman = Pacman(Position(1, 2), config.lives)
@@ -104,8 +107,30 @@ class Game:
             self.pacman.pos.x = 1
             self.pacman.pos.y = 1
 
-    def _chasing(self, ghost_loc, pacman_loc):
-        pass
+    def _chasing(self, ghost_loc: Tuple[int, int], pacman_loc):
+        ghostx, ghosty = ghost_loc
+        pacmanx, pacmany = pacman_loc
+        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+        visited = [[10 for _ in range(len(self.maze[0]))] for _ in range(len(self.maze))]
+        res = []
+        q = deque()
+        visited[ghosty][ghostx] = True
+        q.append((ghostx, ghosty))
+        while q:
+            currx, curry = q.popleft()
+            res.append((currx, curry))
+            if (currx, curry) == (pacmanx, pacmany):
+                break
+            for dx, dy in directions:
+                nx, ny = currx + dx, curry + dy
+                if (nx < 0 or ny < 0
+                    or nx == self.rows
+                    or ny == self.cols
+                    or not visited[ny][nx]):
+                    continue
+                visited[ny][nx] = True
+                q.append((nx, ny))
+        print(res)
 
     def _rendering(self):
         pr.begin_drawing()
