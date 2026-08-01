@@ -18,7 +18,7 @@ class Game:
         self.maze: list[list[int]] = maze
         self.state = GameState.MENU
         self.configs = config
-        self.pacman = Pacman(Position(1, 1), config.lives)
+        self.pacman = Pacman(Position(1, 2), config.lives)
         self.ghosts = [
             Ghost(Position(5, 5), "Pinky"),
             Ghost(Position(5, 5), "Inky"),
@@ -104,6 +104,9 @@ class Game:
             self.pacman.pos.x = 1
             self.pacman.pos.y = 1
 
+    def _chasing(self, ghost_loc, pacman_loc):
+        pass
+
     def _rendering(self):
         pr.begin_drawing()
         pr.clear_background(pr.BLACK)
@@ -157,10 +160,14 @@ class Game:
             pr.draw_circle(px, py, cell_size // 2 - 2, pr.YELLOW)
 
             pr.draw_text(f"Score: {self.score}", 10, 10, 20, pr.WHITE)
+            if pr.gui_button(pr.Rectangle(300, 10, 120, 40), "PAUSE"):
+                self.state = GameState.PAUSE
             pr.draw_text(f"Lives: {self.pacman.lives}", 200, 10, 20, pr.WHITE)
             
         elif self.state == GameState.PAUSE:
             pr.draw_text("PAUSED", 250, 250, 40, pr.WHITE)
+            if pr.gui_button(pr.Rectangle(300, 10, 120, 40), "RESUME"):
+                self.state = GameState.PLAY
             
         elif self.state == GameState.END:
             pr.draw_text("GAME OVER", 220, 250, 40, pr.RED)

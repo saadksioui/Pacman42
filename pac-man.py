@@ -3,7 +3,6 @@ from pydantic import ValidationError # type: ignore
 from paclib.errors import ArgumentError
 from paclib.parser import ConfigParser
 from paclib.game_loop import Game
-from paclib.tem_vis import run_visualizer
 from paclib.maze_wrapper import maze_generator
 
 def main():
