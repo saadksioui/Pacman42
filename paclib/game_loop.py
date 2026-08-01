@@ -2,7 +2,7 @@ from enum import Enum
 from paclib.parser import Config
 from paclib.classes import Pacman, Ghost, Position
 from typing import List
-import pyray as pr
+import pyray as pr  # type: ignore
 
 
 class GameState(Enum):
@@ -58,20 +58,23 @@ class Game:
             return
 
         if 0 <= new_y < len(self.maze) and 0 <= new_x < len(self.maze[0]):
-            if self.maze[new_y][new_x] != 1:
+            target = self.maze[new_y][new_x]
+            if target != 10:
                 self.pacman.pos.x = new_x
                 self.pacman.pos.y = new_y
 
     def _collisions(self):
         curr_pos = self.maze[self.pacman.pos.y][self.pacman.pos.x]
         if curr_pos == 1:
-            pass
+            self.score += 10
+            self.maze[self.pacman.pos.y][self.pacman.pos.x] = 0
         elif curr_pos == 10:
             self.score += 10
             self.maze[self.pacman.pos.y][self.pacman.pos.x] = 0
         elif curr_pos == 50:
             self.score += 50
             self._change_pacman_state()
+            self.maze[self.pacman.pos.y][self.pacman.pos.x] = 0
 
         for ghost in self.ghosts:
             if (self.pacman.pos.x == ghost.pos.x
@@ -96,18 +99,14 @@ class Game:
     def _pacman_death(self):
         self.pacman.lives -= 1
         if self.pacman.lives == 0:
-            self.is_running = False
+            self.state = GameState.END
         else:
-            self.pacman.pos.x = 10
-            self.pacman.pos.y = 10
+            self.pacman.pos.x = 1
+            self.pacman.pos.y = 1
 
-<<<<<<< HEAD
     def _rendering(self):
-        pass
-=======
-    def _rendring(self):
         pr.begin_drawing()
-        pr.clear_background(pr.GRAY)
+        pr.clear_background(pr.BLACK)
 
         if self.state == GameState.MENU:
             pr.draw_text("PACMAN", 250, 200, 40, pr.YELLOW)
@@ -118,18 +117,19 @@ class Game:
 
         elif self.state == GameState.PLAY:
             cell_size = 24
+            y_offset = 40
 
             for y, row in enumerate(self.maze):
                 for x, cell in enumerate(row):
                     pixel_x = x * cell_size
-                    pixel_y = y * cell_size
+                    pixel_y = (y * cell_size) + y_offset
                     
-                    if cell == 1:
-                        pr.draw_rectangle(pixel_x, pixel_y, cell_size, cell_size, pr.BLACK)
-                    elif cell == 10:
+                    if cell == 10:
+                        pr.draw_rectangle(pixel_x, pixel_y, cell_size, cell_size, pr.DARKBLUE)
+                    elif cell == 1:
                         pr.draw_circle(pixel_x + cell_size // 2, pixel_y + cell_size // 2, 3, pr.YELLOW)
                     elif cell == 50:
-                        pr.draw_circle(pixel_x + cell_size // 2, pixel_y + cell_size // 2, 8, pr.ORANGE)
+                        pr.draw_circle(pixel_x + cell_size // 2, pixel_y + cell_size // 2, 5, pr.ORANGE)
 
             ghost_colors = {
                 "Blinky": pr.RED,
@@ -140,7 +140,7 @@ class Game:
 
             for ghost in self.ghosts:
                 gx = ghost.pos.x * cell_size + cell_size // 2
-                gy = ghost.pos.y * cell_size + cell_size // 2
+                gy = ghost.pos.y * cell_size + cell_size // 2 + y_offset
 
                 if ghost.state == ghost.State.FRIGHTENED:
                     g_color = pr.BLUE
@@ -152,7 +152,7 @@ class Game:
                 pr.draw_circle(gx, gy, cell_size // 2 - 2, g_color)
 
             px = self.pacman.pos.x * cell_size + cell_size // 2
-            py = self.pacman.pos.y * cell_size + cell_size // 2
+            py = self.pacman.pos.y * cell_size + cell_size // 2 + y_offset
 
             pr.draw_circle(px, py, cell_size // 2 - 2, pr.YELLOW)
 
@@ -167,11 +167,24 @@ class Game:
             pr.draw_text(f"Final Score: {self.score}", 240, 300, 20, pr.WHITE)
 
         pr.end_drawing()
->>>>>>> 2efe7b0 (feat: enhance game functionality with maze generation and visualization, refactor game loop)
 
     def run(self):
+        move_timer = 0.0  
+        move_delay = 0.10
         while self.is_running and not pr.window_should_close():
-            key = self._user_inputs()
-            self._update_entities(key)
-            self._collisions()
+            if self.state == GameState.PLAY:
+                move_timer += pr.get_frame_time()
+                if move_timer >= move_delay:
+                    key = self._user_inputs()
+                    if key != 0:
+                        self._update_entities(key)
+                    move_timer = 0.0
+
+                self._collisions()
+
+                if self.pacman.op_timer > 0:
+                    self.pacman.op_timer -= pr.get_frame_time()
+                    if self.pacman.op_timer <= 0:
+                        self._change_ghosts_state()
+                        self.pacman.op_timer = 0.0
             self._rendering()
