@@ -4,6 +4,7 @@ from paclib.classes import Pacman, Ghost, Position
 from typing import List, Tuple
 import pyray as pr  # type: ignore
 from collections import deque
+import time
 
 
 class GameState(Enum):
@@ -98,6 +99,7 @@ class Game:
         for ghost in self.ghosts:
             if ghost.state == ghost.State.FRIGHTENED:
                 ghost.state = ghost.State.CHASE
+                self._chasing(ghost)
 
     def _pacman_death(self):
         self.pacman.lives -= 1
@@ -107,30 +109,23 @@ class Game:
             self.pacman.pos.x = 1
             self.pacman.pos.y = 1
 
-    def _chasing(self, ghost_loc: Tuple[int, int], pacman_loc):
-        ghostx, ghosty = ghost_loc
-        pacmanx, pacmany = pacman_loc
+    def _chasing(self, ghost: Ghost):
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-        visited = [[10 for _ in range(len(self.maze[0]))] for _ in range(len(self.maze))]
-        res = []
-        q = deque()
-        visited[ghosty][ghostx] = True
-        q.append((ghostx, ghosty))
-        while q:
-            currx, curry = q.popleft()
-            res.append((currx, curry))
-            if (currx, curry) == (pacmanx, pacmany):
-                break
-            for dx, dy in directions:
-                nx, ny = currx + dx, curry + dy
-                if (nx < 0 or ny < 0
-                    or nx == self.rows
-                    or ny == self.cols
-                    or not visited[ny][nx]):
-                    continue
-                visited[ny][nx] = True
-                q.append((nx, ny))
-        print(res)
+        perfect_dis = float("inf")
+        perfect_pos = None
+        for dx, dy in directions:
+            nx = ghost.pos.x + dx
+            ny = ghost.pos.y + dy
+            if (0 <= nx < self.rows and 0 <= ny < self.cols):
+                if self.maze[ny][nx] != 10:
+                    dist = abs(self.pacman.pos.x - nx) + abs(self.pacman.pos.y - ny)
+                    if dist < perfect_dis:
+                        perfect_dis = dist
+                        perfect_pos = (nx, ny)
+        if perfect_pos:
+            ghost.pos.x = perfect_pos[0]
+            ghost.pos.y = perfect_pos[1]
+            
 
     def _rendering(self):
         pr.begin_drawing()
@@ -201,21 +196,29 @@ class Game:
         pr.end_drawing()
 
     def run(self):
-        move_timer = 0.0  
-        move_delay = 0.10
+        pacman_timer, ghost_timer = 0.0, 0.0
+        pacman_delay, ghost_delay = 0.10, 0.10
         while self.is_running and not pr.window_should_close():
+            frame_time = pr.get_frame_time()
             if self.state == GameState.PLAY:
-                move_timer += pr.get_frame_time()
-                if move_timer >= move_delay:
+                pacman_timer += frame_time
+                ghost_timer += frame_time
+                if pacman_timer >= pacman_delay:
                     key = self._user_inputs()
                     if key != 0:
                         self._update_entities(key)
-                    move_timer = 0.0
+                    pacman_timer = 0.0
+
+                if ghost_timer >= ghost_delay:
+                    for ghost in self.ghosts:
+                        if ghost.state == ghost.State.CHASE:
+                            self._chasing(ghost)
+                    ghost_timer = 0.0
 
                 self._collisions()
 
                 if self.pacman.op_timer > 0:
-                    self.pacman.op_timer -= pr.get_frame_time()
+                    self.pacman.op_timer -= frame_time
                     if self.pacman.op_timer <= 0:
                         self._change_ghosts_state()
                         self.pacman.op_timer = 0.0
