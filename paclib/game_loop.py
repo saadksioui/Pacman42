@@ -22,7 +22,7 @@ class Game:
         self.cols = len(maze[0])
         self.state = GameState.MENU
         self.configs = config
-        self.pacman = Pacman(Position(1, 2), config.lives)
+        self.pacman = Pacman(Position(1, 1), config.lives)
         self.ghosts = [
             Ghost(Position(5, 5), "Pinky"),
             Ghost(Position(5, 5), "Inky"),
@@ -63,16 +63,13 @@ class Game:
 
         if 0 <= new_y < len(self.maze) and 0 <= new_x < len(self.maze[0]):
             target = self.maze[new_y][new_x]
-            if target != 10:
+            if target != 1:
                 self.pacman.pos.x = new_x
                 self.pacman.pos.y = new_y
 
     def _collisions(self):
         curr_pos = self.maze[self.pacman.pos.y][self.pacman.pos.x]
-        if curr_pos == 1:
-            self.score += 10
-            self.maze[self.pacman.pos.y][self.pacman.pos.x] = 0
-        elif curr_pos == 10:
+        if curr_pos == 10:
             self.score += 10
             self.maze[self.pacman.pos.y][self.pacman.pos.x] = 0
         elif curr_pos == 50:
@@ -116,12 +113,11 @@ class Game:
         for dx, dy in directions:
             nx = ghost.pos.x + dx
             ny = ghost.pos.y + dy
-            if (0 <= nx < self.rows and 0 <= ny < self.cols):
-                if self.maze[ny][nx] != 10:
-                    dist = abs(self.pacman.pos.x - nx) + abs(self.pacman.pos.y - ny)
-                    if dist < perfect_dis:
-                        perfect_dis = dist
-                        perfect_pos = (nx, ny)
+            if (0 <= nx < self.cols and 0 <= ny < self.rows and self.maze[ny][nx] != 1):
+                dist = abs(self.pacman.pos.x - nx) + abs(self.pacman.pos.y - ny)
+                if dist < perfect_dis:
+                    perfect_dis = dist
+                    perfect_pos = (nx, ny)
         if perfect_pos:
             ghost.pos.x = perfect_pos[0]
             ghost.pos.y = perfect_pos[1]
@@ -147,9 +143,9 @@ class Game:
                     pixel_x = x * cell_size
                     pixel_y = (y * cell_size) + y_offset
                     
-                    if cell == 10:
+                    if cell == 1:
                         pr.draw_rectangle(pixel_x, pixel_y, cell_size, cell_size, pr.DARKBLUE)
-                    elif cell == 1:
+                    elif cell == 10:
                         pr.draw_circle(pixel_x + cell_size // 2, pixel_y + cell_size // 2, 3, pr.YELLOW)
                     elif cell == 50:
                         pr.draw_circle(pixel_x + cell_size // 2, pixel_y + cell_size // 2, 5, pr.ORANGE)
