@@ -22,12 +22,12 @@ class Game:
         self.cols = len(maze[0])
         self.state = GameState.MENU
         self.configs = config
-        self.pacman = Pacman(Position(1, 1), config.lives)
+        self.pacman = Pacman(Position(self.rows // 2, self.cols // 2), config.lives)
         self.ghosts = [
-            Ghost(Position(5, 5), "Pinky"),
-            Ghost(Position(5, 5), "Inky"),
-            Ghost(Position(5, 5), "Blinky"),
-            Ghost(Position(5, 5), "Clyde"),
+            Ghost(Position(1, 1), "Pinky"),
+            Ghost(Position(self.rows - 2, 1), "Inky"),
+            Ghost(Position(self.rows - 2, self.cols - 2), "Blinky"),
+            Ghost(Position(1, self.cols - 2), "Clyde"),
         ]
         self.score: int = 0
         self.power_timer: float = 0.0
@@ -103,8 +103,8 @@ class Game:
         if self.pacman.lives == 0:
             self.state = GameState.END
         else:
-            self.pacman.pos.x = 1
-            self.pacman.pos.y = 1
+            self.pacman.pos.x = self.rows // 2
+            self.pacman.pos.y = self.cols // 2
 
     def _chasing(self, ghost: Ghost):
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]

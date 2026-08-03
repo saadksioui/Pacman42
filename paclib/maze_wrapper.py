@@ -30,10 +30,13 @@ def maze_generator():
                 vis_map[vr][vc + 1] = 10
             if not (amazing_maze.maze[r][c] & SOUTH):
                 vis_map[vr + 1][vc] = 10
-    vis_map[1][1] = 50
-    vis_map[1][vis_cols - 2] = 50
-    vis_map[vis_rows - 2][1] = 50
-    vis_map[vis_rows - 2][vis_cols - 2] = 50
+    mid_row = vis_rows // 2
+    mid_col = vis_cols // 2
+
+    vis_map[1][mid_col] = 50
+    vis_map[vis_rows - 2][mid_col] = 50
+    vis_map[mid_row][1] = 50
+    vis_map[mid_row][vis_cols - 2] = 50
     print("Original Maze")
     maze_printer(amazing_maze.maze)
     print("Maze Wrapper")
