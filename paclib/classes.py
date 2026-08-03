@@ -57,7 +57,6 @@ class Pacman(Entity):
 
 class Ghost(Entity):
     class State(Enum):
-        SCATTER = "scatter"
         CHASE = "chase"
         FRIGHTENED = "Frightened"
         EATEN = "Eaten"
@@ -66,7 +65,7 @@ class Ghost(Entity):
 
     def __init__(self, init_pos: Position, name: str):
         super().__init__(init_pos)
-        self.state = self.State.SCATTER
+        self.state = self.State.CHASE
         self.name = name
 
     def update(self):

@@ -1,10 +1,10 @@
 from enum import Enum
+import queue
 from paclib.parser import Config
 from paclib.classes import Pacman, Ghost, Position
 from typing import List, Tuple
 import pyray as pr  # type: ignore
 from collections import deque
-import time
 
 
 class GameState(Enum):
@@ -22,12 +22,12 @@ class Game:
         self.cols = len(maze[0])
         self.state = GameState.MENU
         self.configs = config
-        self.pacman = Pacman(Position(self.rows // 2, self.cols // 2), config.lives)
+        self.pacman = Pacman(Position(self.cols // 2, self.rows // 2), config.lives)
         self.ghosts = [
             Ghost(Position(1, 1), "Pinky"),
-            Ghost(Position(self.rows - 2, 1), "Inky"),
-            Ghost(Position(self.rows - 2, self.cols - 2), "Blinky"),
-            Ghost(Position(1, self.cols - 2), "Clyde"),
+            Ghost(Position(self.cols - 2, 1), "Inky"),
+            Ghost(Position(self.cols - 2, self.rows - 2), "Blinky"),
+            Ghost(Position(1, self.rows - 2), "Clyde"),
         ]
         self.score: int = 0
         self.power_timer: float = 0.0
@@ -67,6 +67,12 @@ class Game:
                 self.pacman.pos.x = new_x
                 self.pacman.pos.y = new_y
 
+    def _win_condition(self):
+        for row in self.maze:
+            if 10 in row or 50 in row:
+                return False
+        return True
+
     def _collisions(self):
         curr_pos = self.maze[self.pacman.pos.y][self.pacman.pos.x]
         if curr_pos == 10:
@@ -85,12 +91,15 @@ class Game:
                     self.score += 200
                 else:
                     self._pacman_death()
+        if self._win_condition():
+            self.state = GameState.END
 
     def _change_pacman_state(self):
         self.pacman.op_timer = 7.0
         for ghost in self.ghosts:
             if ghost.state != ghost.State.EATEN:
                 ghost.state = ghost.State.FRIGHTENED
+                self._fleeing(ghost)
 
     def _change_ghosts_state(self):
         for ghost in self.ghosts:
@@ -103,25 +112,67 @@ class Game:
         if self.pacman.lives == 0:
             self.state = GameState.END
         else:
-            self.pacman.pos.x = self.rows // 2
-            self.pacman.pos.y = self.cols // 2
+            self.pacman.pos.x = self.cols // 2
+            self.pacman.pos.y = self.rows // 2
 
     def _chasing(self, ghost: Ghost):
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-        perfect_dis = float("inf")
+        start = (ghost.pos.x, ghost.pos.y)
+        target = (self.pacman.pos.x, self.pacman.pos.y)
+
+        if start == target:
+            return
+
+        queue = deque([start])
+        parent: dict[tuple[int, int], tuple[int, int] | None] = {start: None}
+
+        found = False
+        while queue:
+            curr = queue.popleft()
+
+            if curr == target:
+                found = True
+                break
+
+            for dx, dy in directions:
+                nxt = (curr[0] + dx, curr[1] + dy)
+                if (0 <= nxt[0] < self.cols
+                    and 0 <= nxt[1] < self.rows
+                    and self.maze[nxt[1]][nxt[0]] != 1):
+                    if nxt not in parent:
+                        parent[nxt] = curr
+                        queue.append(nxt)
+
+        if target not in parent:
+            return
+
+        if found:
+            path = []
+            curr = target
+            while curr is not None:
+                path.append(curr)
+                curr = parent[curr]
+            path.reverse()
+
+            if len(path) > 1:
+                ghost.pos.x, ghost.pos.y = path[1]
+
+
+    def _fleeing(self, ghost: Ghost):
+        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+        perfect_dis = float("-inf")
         perfect_pos = None
         for dx, dy in directions:
-            nx = ghost.pos.x + dx
-            ny = ghost.pos.y + dy
-            if (0 <= nx < self.cols and 0 <= ny < self.rows and self.maze[ny][nx] != 1):
-                dist = abs(self.pacman.pos.x - nx) + abs(self.pacman.pos.y - ny)
-                if dist < perfect_dis:
+            nxt = (ghost.pos.x + dx, ghost.pos.y + dy)
+            if (0 <= nxt[0] < self.cols
+                and 0 <= nxt[1] < self.rows
+                and self.maze[nxt[1]][nxt[0]] != 1):
+                dist = abs(self.pacman.pos.x - nxt[0]) + abs(self.pacman.pos.y - nxt[1])
+                if dist > perfect_dis:
                     perfect_dis = dist
-                    perfect_pos = (nx, ny)
+                    perfect_pos = nxt
         if perfect_pos:
-            ghost.pos.x = perfect_pos[0]
-            ghost.pos.y = perfect_pos[1]
-            
+            ghost.pos.x, ghost.pos.y = perfect_pos
 
     def _rendering(self):
         pr.begin_drawing()
@@ -193,7 +244,7 @@ class Game:
 
     def run(self):
         pacman_timer, ghost_timer = 0.0, 0.0
-        pacman_delay, ghost_delay = 0.10, 0.10
+        pacman_delay, ghost_delay = 0.10, 0.20
         while self.is_running and not pr.window_should_close():
             frame_time = pr.get_frame_time()
             if self.state == GameState.PLAY:
@@ -207,8 +258,11 @@ class Game:
 
                 if ghost_timer >= ghost_delay:
                     for ghost in self.ghosts:
+                        print(f"{ghost.name} state is: {ghost.state}")
                         if ghost.state == ghost.State.CHASE:
                             self._chasing(ghost)
+                        elif ghost.state == ghost.State.FRIGHTENED:
+                            self._fleeing(ghost)
                     ghost_timer = 0.0
 
                 self._collisions()
