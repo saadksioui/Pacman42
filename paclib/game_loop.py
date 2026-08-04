@@ -84,8 +84,7 @@ class Game:
             self.maze[self.pacman.pos.y][self.pacman.pos.x] = 0
 
         for ghost in self.ghosts:
-            if (self.pacman.pos.x == ghost.pos.x
-                    and self.pacman.pos.y == ghost.pos.y):
+            if self.pacman.pos.x == ghost.pos.x and self.pacman.pos.y == ghost.pos.y:
                 if ghost.state == ghost.State.FRIGHTENED:
                     ghost.state = ghost.State.EATEN
                     self.score += 200
@@ -136,9 +135,11 @@ class Game:
 
             for dx, dy in directions:
                 nxt = (curr[0] + dx, curr[1] + dy)
-                if (0 <= nxt[0] < self.cols
+                if (
+                    0 <= nxt[0] < self.cols
                     and 0 <= nxt[1] < self.rows
-                    and self.maze[nxt[1]][nxt[0]] != 1):
+                    and self.maze[nxt[1]][nxt[0]] != 1
+                ):
                     if nxt not in parent:
                         parent[nxt] = curr
                         queue.append(nxt)
@@ -157,16 +158,17 @@ class Game:
             if len(path) > 1:
                 ghost.pos.x, ghost.pos.y = path[1]
 
-
     def _fleeing(self, ghost: Ghost):
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
         perfect_dis = float("-inf")
         perfect_pos = None
         for dx, dy in directions:
             nxt = (ghost.pos.x + dx, ghost.pos.y + dy)
-            if (0 <= nxt[0] < self.cols
+            if (
+                0 <= nxt[0] < self.cols
                 and 0 <= nxt[1] < self.rows
-                and self.maze[nxt[1]][nxt[0]] != 1):
+                and self.maze[nxt[1]][nxt[0]] != 1
+            ):
                 dist = abs(self.pacman.pos.x - nxt[0]) + abs(self.pacman.pos.y - nxt[1])
                 if dist > perfect_dis:
                     perfect_dis = dist
@@ -193,19 +195,31 @@ class Game:
                 for x, cell in enumerate(row):
                     pixel_x = x * cell_size
                     pixel_y = (y * cell_size) + y_offset
-                    
+
                     if cell == 1:
-                        pr.draw_rectangle(pixel_x, pixel_y, cell_size, cell_size, pr.DARKBLUE)
+                        pr.draw_rectangle(
+                            pixel_x, pixel_y, cell_size, cell_size, pr.DARKBLUE
+                        )
                     elif cell == 10:
-                        pr.draw_circle(pixel_x + cell_size // 2, pixel_y + cell_size // 2, 3, pr.YELLOW)
+                        pr.draw_circle(
+                            pixel_x + cell_size // 2,
+                            pixel_y + cell_size // 2,
+                            3,
+                            pr.YELLOW,
+                        )
                     elif cell == 50:
-                        pr.draw_circle(pixel_x + cell_size // 2, pixel_y + cell_size // 2, 5, pr.ORANGE)
+                        pr.draw_circle(
+                            pixel_x + cell_size // 2,
+                            pixel_y + cell_size // 2,
+                            5,
+                            pr.ORANGE,
+                        )
 
             ghost_colors = {
                 "Blinky": pr.RED,
                 "Pinky": pr.PINK,
                 "Inky": pr.SKYBLUE,
-                "Clyde": pr.ORANGE
+                "Clyde": pr.ORANGE,
             }
 
             for ghost in self.ghosts:
@@ -230,12 +244,12 @@ class Game:
             if pr.gui_button(pr.Rectangle(300, 10, 120, 40), "PAUSE"):
                 self.state = GameState.PAUSE
             pr.draw_text(f"Lives: {self.pacman.lives}", 200, 10, 20, pr.WHITE)
-            
+
         elif self.state == GameState.PAUSE:
             pr.draw_text("PAUSED", 250, 250, 40, pr.WHITE)
             if pr.gui_button(pr.Rectangle(300, 10, 120, 40), "RESUME"):
                 self.state = GameState.PLAY
-            
+
         elif self.state == GameState.END:
             pr.draw_text("GAME OVER", 220, 250, 40, pr.RED)
             pr.draw_text(f"Final Score: {self.score}", 240, 300, 20, pr.WHITE)
