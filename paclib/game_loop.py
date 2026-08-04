@@ -1,8 +1,7 @@
 from enum import Enum
-import queue
 from paclib.parser import Config
 from paclib.classes import Pacman, Ghost, Position
-from typing import List, Tuple
+from typing import List
 import pyray as pr  # type: ignore
 from collections import deque
 
@@ -22,7 +21,8 @@ class Game:
         self.cols = len(maze[0])
         self.state = GameState.MENU
         self.configs = config
-        self.pacman = Pacman(Position(self.cols // 2, self.rows // 2), config.lives)
+        self.pacman = Pacman(Position(self.cols // 2, self.rows // 2),
+                             config.lives)
         self.ghosts = [
             Ghost(Position(1, 1), "Pinky"),
             Ghost(Position(self.cols - 2, 1), "Inky"),
@@ -84,7 +84,8 @@ class Game:
             self.maze[self.pacman.pos.y][self.pacman.pos.x] = 0
 
         for ghost in self.ghosts:
-            if self.pacman.pos.x == ghost.pos.x and self.pacman.pos.y == ghost.pos.y:
+            if (self.pacman.pos.x == ghost.pos.x
+                    and self.pacman.pos.y == ghost.pos.y):
                 if ghost.state == ghost.State.FRIGHTENED:
                     ghost.state = ghost.State.EATEN
                     self.score += 200
@@ -169,7 +170,8 @@ class Game:
                 and 0 <= nxt[1] < self.rows
                 and self.maze[nxt[1]][nxt[0]] != 1
             ):
-                dist = abs(self.pacman.pos.x - nxt[0]) + abs(self.pacman.pos.y - nxt[1])
+                dist = (abs(self.pacman.pos.x - nxt[0])
+                        + abs(self.pacman.pos.y - nxt[1]))
                 if dist > perfect_dis:
                     perfect_dis = dist
                     perfect_pos = nxt
@@ -272,7 +274,6 @@ class Game:
 
                 if ghost_timer >= ghost_delay:
                     for ghost in self.ghosts:
-                        print(f"{ghost.name} state is: {ghost.state}")
                         if ghost.state == ghost.State.CHASE:
                             self._chasing(ghost)
                         elif ghost.state == ghost.State.FRIGHTENED:
