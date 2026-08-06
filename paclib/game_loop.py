@@ -115,10 +115,10 @@ class Game:
             self.pacman.pos.x = self.cols // 2
             self.pacman.pos.y = self.rows // 2
 
-    def _chasing(self, ghost: Ghost):
+    def _chasing(self, ghost: Ghost, corner: Position = None):
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
         start = (ghost.pos.x, ghost.pos.y)
-        target = (self.pacman.pos.x, self.pacman.pos.y)
+        target = (corner.x, corner.y) if corner else (self.pacman.pos.x, self.pacman.pos.y)
 
         if start == target:
             return
@@ -159,24 +159,10 @@ class Game:
             if len(path) > 1:
                 ghost.pos.x, ghost.pos.y = path[1]
 
-    def _fleeing(self, ghost: Ghost):
-        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-        perfect_dis = float("-inf")
-        perfect_pos = None
-        for dx, dy in directions:
-            nxt = (ghost.pos.x + dx, ghost.pos.y + dy)
-            if (
-                0 <= nxt[0] < self.cols
-                and 0 <= nxt[1] < self.rows
-                and self.maze[nxt[1]][nxt[0]] != 1
-            ):
-                dist = (abs(self.pacman.pos.x - nxt[0])
-                        + abs(self.pacman.pos.y - nxt[1]))
-                if dist > perfect_dis:
-                    perfect_dis = dist
-                    perfect_pos = nxt
-        if perfect_pos:
-            ghost.pos.x, ghost.pos.y = perfect_pos
+    def _eaten(self, ghost: Ghost):
+        ghost.pos.x = self.cols // 2
+        ghost.pos.y = self.rows // 2
+        ghost.state = ghost.State.CHASE
 
     def _rendering(self):
         pr.begin_drawing()
@@ -277,7 +263,10 @@ class Game:
                         if ghost.state == ghost.State.CHASE:
                             self._chasing(ghost)
                         elif ghost.state == ghost.State.FRIGHTENED:
-                            self._fleeing(ghost)
+                            self._chasing(ghost, corner=Position(0, 0))
+                        elif ghost.state == ghost.State.EATEN:
+                            self._eaten(ghost)
+                        
                     ghost_timer = 0.0
 
                 self._collisions()
