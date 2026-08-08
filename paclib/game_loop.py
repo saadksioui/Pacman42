@@ -99,7 +99,7 @@ class Game:
         for ghost in self.ghosts:
             if ghost.state != ghost.State.EATEN:
                 ghost.state = ghost.State.FRIGHTENED
-                self._fleeing(ghost)
+                self._chasing(ghost, corner=Position(1, 1))
 
     def _change_ghosts_state(self):
         for ghost in self.ghosts:
@@ -263,7 +263,7 @@ class Game:
                         if ghost.state == ghost.State.CHASE:
                             self._chasing(ghost)
                         elif ghost.state == ghost.State.FRIGHTENED:
-                            self._chasing(ghost, corner=Position(0, 0))
+                            self._chasing(ghost, corner=Position(1, 1))
                         elif ghost.state == ghost.State.EATEN:
                             self._eaten(ghost)
                         
