@@ -70,3 +70,31 @@ class Ghost(Entity):
 
     def update(self):
         pass
+
+    def get_target(self, pacman: Pacman, blinky_pos: Position = None) -> tuple[int, int]:
+        px, py = pacman.pos.x, pacman.pos.y
+        dx, dy = pacman.curr_direction.value
+
+        if self.name == "Blinky":
+            return (px, py)
+
+        elif self.name == "Pinky":
+            return (px + (dx * 4), py + (dy * 4))
+
+        elif self.name == "Inky":
+            pivot_x = px + (dx * 2)
+            pivot_y = py + (dy * 2)
+            
+            if blinky_pos:
+                vec_x = pivot_x - blinky_pos.x
+                vec_y = pivot_y - blinky_pos.y
+                
+                return (blinky_pos.x + (vec_x * 2), blinky_pos.y + (vec_y * 2))
+            return (px, py)
+
+        elif self.name == "Clyde":
+            dist = abs(px - self.pos.x) + abs(py - self.pos.y)
+            if dist > 8:
+                return (px, py)
+            else:
+                return (1, 30)

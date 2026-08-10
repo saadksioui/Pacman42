@@ -99,7 +99,7 @@ class Game:
         for ghost in self.ghosts:
             if ghost.state != ghost.State.EATEN:
                 ghost.state = ghost.State.FRIGHTENED
-                self._chasing(ghost, corner=Position(1, 1))
+                self._fleeing(ghost, corner=Position(1, 1))
 
     def _change_ghosts_state(self):
         for ghost in self.ghosts:
@@ -115,10 +115,54 @@ class Game:
             self.pacman.pos.x = self.cols // 2
             self.pacman.pos.y = self.rows // 2
 
-    def _chasing(self, ghost: Ghost, corner: Position = None):
+    def _chasing(self, ghost: Ghost):
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
         start = (ghost.pos.x, ghost.pos.y)
-        target = (corner.x, corner.y) if corner else (self.pacman.pos.x, self.pacman.pos.y)
+        target = ghost.get_target(self.pacman)
+
+        if start == target:
+            return
+
+        queue = deque([start])
+        parent: dict[tuple[int, int], tuple[int, int] | None] = {start: None}
+
+        found = False
+        while queue:
+            curr = queue.popleft()
+
+            if curr == target:
+                found = True
+                break
+
+            for dx, dy in directions:
+                nxt = (curr[0] + dx, curr[1] + dy)
+                if (
+                    0 <= nxt[0] < self.cols
+                    and 0 <= nxt[1] < self.rows
+                    and self.maze[nxt[1]][nxt[0]] != 1
+                ):
+                    if nxt not in parent:
+                        parent[nxt] = curr
+                        queue.append(nxt)
+
+        if target not in parent:
+            return
+
+        if found:
+            path = []
+            curr = target
+            while curr is not None:
+                path.append(curr)
+                curr = parent[curr]
+            path.reverse()
+
+            if len(path) > 1:
+                ghost.pos.x, ghost.pos.y = path[1]
+
+    def _fleeing(self, ghost: Ghost, corner: Position):
+        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+        start = (ghost.pos.x, ghost.pos.y)
+        target = (corner.x, corner.y)
 
         if start == target:
             return
@@ -263,7 +307,7 @@ class Game:
                         if ghost.state == ghost.State.CHASE:
                             self._chasing(ghost)
                         elif ghost.state == ghost.State.FRIGHTENED:
-                            self._chasing(ghost, corner=Position(1, 1))
+                            self._fleeing(ghost, corner=Position(1, 1))
                         elif ghost.state == ghost.State.EATEN:
                             self._eaten(ghost)
                         
