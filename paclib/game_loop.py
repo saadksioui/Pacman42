@@ -1,6 +1,6 @@
 from enum import Enum
 from paclib.parser import Config
-from paclib.classes import Pacman, Ghost, Position
+from paclib.classes import Direction, Pacman, Ghost, Position
 from typing import List
 import pyray as pr  # type: ignore
 from collections import deque
@@ -66,6 +66,14 @@ class Game:
             if target != 1:
                 self.pacman.pos.x = new_x
                 self.pacman.pos.y = new_y
+                if key == pr.KEY_UP:
+                    self.pacman.curr_direction = Direction.UP
+                elif key == pr.KEY_DOWN:
+                    self.pacman.curr_direction = Direction.DOWN
+                elif key == pr.KEY_LEFT:
+                    self.pacman.curr_direction = Direction.LEFT
+                elif key == pr.KEY_RIGHT:
+                    self.pacman.curr_direction = Direction.RIGHT
 
     def _win_condition(self):
         for row in self.maze:
