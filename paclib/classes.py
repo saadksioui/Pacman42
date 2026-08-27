@@ -71,7 +71,9 @@ class Ghost(Entity):
     def update(self):
         pass
 
-    def get_target(self, pacman: Pacman, blinky_pos: Position = None) -> tuple[int, int]:
+    def get_target(self, pacman: Pacman,
+                   blinky_pos: tuple[int, int]
+                   | None = None) -> tuple[int, int] | None:
         px, py = pacman.pos.x, pacman.pos.y
         dx, dy = pacman.curr_direction.value
 
@@ -86,10 +88,10 @@ class Ghost(Entity):
             pivot_y = py + (dy * 2)
             
             if blinky_pos:
-                vec_x = pivot_x - blinky_pos.x
-                vec_y = pivot_y - blinky_pos.y
+                vec_x = pivot_x - blinky_pos[0]
+                vec_y = pivot_y - blinky_pos[1]
                 
-                return (blinky_pos.x + (vec_x * 2), blinky_pos.y + (vec_y * 2))
+                return (blinky_pos[0] + (vec_x * 2), blinky_pos[1] + (vec_y * 2))
             return (px, py)
 
         elif self.name == "Clyde":

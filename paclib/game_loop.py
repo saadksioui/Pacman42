@@ -126,7 +126,9 @@ class Game:
     def _chasing(self, ghost: Ghost):
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
         start = (ghost.pos.x, ghost.pos.y)
-        target = ghost.get_target(self.pacman)
+        blinky = next((g for g in self.ghosts if g.name == "Blinky"), None)
+        blinky_pos = (blinky.pos.x, blinky.pos.y) if blinky else None
+        target = ghost.get_target(self.pacman, blinky_pos=blinky_pos)
 
         if start == target:
             return
