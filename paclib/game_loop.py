@@ -97,6 +97,8 @@ class Game:
                 if ghost.state == ghost.State.FRIGHTENED:
                     ghost.state = ghost.State.EATEN
                     self.score += 200
+                elif ghost.state == ghost.State.EATEN:
+                    self._eaten(ghost)
                 else:
                     self._pacman_death()
         if self._win_condition():
