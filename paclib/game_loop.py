@@ -214,9 +214,48 @@ class Game:
                 ghost.pos.x, ghost.pos.y = path[1]
 
     def _eaten(self, ghost: Ghost):
-        ghost.pos.x = self.cols // 2
-        ghost.pos.y = self.rows // 2
-        ghost.state = ghost.State.CHASE
+        target = (ghost.start_pos.x, ghost.start_pos.y)
+        start = (ghost.pos.x, ghost.pos.y)
+        if start == target:
+            ghost.state = ghost.State.CHASE
+            return
+
+        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+        queue = deque([start])
+        parent: dict[tuple[int, int], tuple[int, int] | None] = {start: None}
+
+        found = False
+        while queue:
+            curr = queue.popleft()
+
+            if curr == target:
+                found = True
+                break
+
+            for dx, dy in directions:
+                nxt = (curr[0] + dx, curr[1] + dy)
+                if (
+                    0 <= nxt[0] < self.cols
+                    and 0 <= nxt[1] < self.rows
+                    and self.maze[nxt[1]][nxt[0]] != 1
+                ):
+                    if nxt not in parent:
+                        parent[nxt] = curr
+                        queue.append(nxt)
+
+        if target not in parent:
+            return
+
+        if found:
+            path = []
+            curr = target
+            while curr is not None:
+                path.append(curr)
+                curr = parent[curr]
+            path.reverse()
+
+            if len(path) > 1:
+                ghost.pos.x, ghost.pos.y = path[1]
 
     def _rendering(self):
         pr.begin_drawing()

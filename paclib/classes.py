@@ -30,11 +30,6 @@ class Entity(ABC):
         self.curr_direction = Direction.NONE
         self.speed = 0.5
 
-    @abstractmethod
-    def update(self) -> None:
-        pass
-
-
 
 class Pacman(Entity):
     class State(Enum):
@@ -51,8 +46,6 @@ class Pacman(Entity):
         self.lives = lives
         self.op_timer = 0.0
 
-    def update(self):
-        pass
 
 
 class Ghost(Entity):
@@ -67,9 +60,8 @@ class Ghost(Entity):
         super().__init__(init_pos)
         self.state = self.State.CHASE
         self.name = name
+        self.start_pos = init_pos
 
-    def update(self):
-        pass
 
     def get_target(self, pacman: Pacman,
                    blinky_pos: tuple[int, int]
