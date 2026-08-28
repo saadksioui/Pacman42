@@ -61,6 +61,7 @@ class Ghost(Entity):
         self.state = self.State.CHASE
         self.name = name
         self.start_pos = init_pos
+        self.prev_pos: tuple[int, int] | None = None
 
 
     def get_target(self, pacman: Pacman,

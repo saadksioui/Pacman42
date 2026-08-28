@@ -109,7 +109,6 @@ class Game:
         for ghost in self.ghosts:
             if ghost.state != ghost.State.EATEN:
                 ghost.state = ghost.State.FRIGHTENED
-                self._fleeing(ghost, corner=Position(1, 1))
 
     def _change_ghosts_state(self):
         for ghost in self.ghosts:
@@ -171,49 +170,54 @@ class Game:
             if len(path) > 1:
                 ghost.pos.x, ghost.pos.y = path[1]
 
-    def _fleeing(self, ghost: Ghost, corner: Position):
+    def _fleeing(self, ghost: Ghost):
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-        start = (ghost.pos.x, ghost.pos.y)
-        target = (corner.x, corner.y)
 
-        if start == target:
-            return
+        neighbors = []
+        for dx, dy in directions:
+            nxt = (ghost.pos.x + dx, ghost.pos.y + dy)
+            if (
+                0 <= nxt[0] < self.cols
+                and 0 <= nxt[1] < self.rows
+                and self.maze[nxt[1]][nxt[0]] != 1
+                and nxt != ghost.prev_pos
+            ):
+                neighbors.append(nxt)
+        def bfs_distance(start_pos):
+            queue = deque([start_pos])
+            distance = {start_pos: 0}
 
-        queue = deque([start])
-        parent: dict[tuple[int, int], tuple[int, int] | None] = {start: None}
+            while queue:
+                curr = queue.popleft()
 
-        found = False
-        while queue:
-            curr = queue.popleft()
+                if curr == self.pacman.pos:
+                    return distance[curr]
 
-            if curr == target:
-                found = True
-                break
+                for dx, dy in directions:
+                    nxt = (curr[0] + dx, curr[1] + dy)
 
-            for dx, dy in directions:
-                nxt = (curr[0] + dx, curr[1] + dy)
-                if (
-                    0 <= nxt[0] < self.cols
-                    and 0 <= nxt[1] < self.rows
-                    and self.maze[nxt[1]][nxt[0]] != 1
-                ):
-                    if nxt not in parent:
-                        parent[nxt] = curr
+                    if (
+                        0 <= nxt[0] < self.cols
+                        and 0 <= nxt[1] < self.rows
+                        and self.maze[nxt[1]][nxt[0]] != 1
+                        and nxt not in distance
+                    ):
+                        distance[nxt] = distance[curr] + 1
                         queue.append(nxt)
 
-        if target not in parent:
-            return
+            return float("inf")
 
-        if found:
-            path = []
-            curr = target
-            while curr is not None:
-                path.append(curr)
-                curr = parent[curr]
-            path.reverse()
+        route = None
+        max_dist = float("-inf")
+        for tile in neighbors:
+            dist = bfs_distance(tile)
 
-            if len(path) > 1:
-                ghost.pos.x, ghost.pos.y = path[1]
+            if dist > max_dist:
+                max_dist = dist
+                route = tile
+        if route is not None:
+            ghost.prev_pos = (ghost.pos.x, ghost.pos.y)
+            ghost.pos.x, ghost.pos.y = route
 
     def _eaten(self, ghost: Ghost):
         target = (ghost.start_pos.x, ghost.start_pos.y)
@@ -358,7 +362,7 @@ class Game:
                         if ghost.state == ghost.State.CHASE:
                             self._chasing(ghost)
                         elif ghost.state == ghost.State.FRIGHTENED:
-                            self._fleeing(ghost, corner=Position(1, 1))
+                            self._fleeing(ghost)
                         elif ghost.state == ghost.State.EATEN:
                             self._eaten(ghost)
                         
