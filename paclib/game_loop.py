@@ -287,6 +287,10 @@ class Game:
                         pr.draw_rectangle(
                             pixel_x, pixel_y, cell_size, cell_size, pr.DARKBLUE
                         )
+                    elif cell == 5:
+                        pr.draw_rectangle(
+                            pixel_x, pixel_y, cell_size, cell_size, pr.YELLOW
+                        )
                     elif cell == 10:
                         pr.draw_circle(
                             pixel_x + cell_size // 2,
