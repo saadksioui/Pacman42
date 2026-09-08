@@ -1,6 +1,6 @@
 import pyray as rl
 
-rl.set_trace_log_level(rl.LOG_NONE)
+rl.set_trace_log_level(rl.TraceLogLevel.LOG_NONE)
 rl.init_window(10, 10, "Pacman")
 
 SCREEN_WIDTH = rl.get_monitor_width(rl.get_current_monitor())
@@ -17,7 +17,73 @@ BOTTOM_SECTION_Y_START = TOP_SECTION_HEIGHT
 BOTTOM_SECTION_Y_END = BOTTOM_SECTION_Y_START + BOTTOM_SECTION_HEIGHT
 BOTTOM_PADDING = SCREEN_HEIGHT * 15 / 100
 
+class SaveScorePage:
+    score: int
 
+    def __init__(self, score: int) -> None:
+        self.score = score
+
+    def _save_in_file(self, name: str) -> None:
+        raise NotImplementedError
+
+    def _should_save(self) -> bool:
+        return True
+
+    def _draw_text(self, s: str) -> None:
+        TITLE_TEXT_SIZE = SCREEN_HEIGHT // 12
+        NORMAL_TEXT_SIZE = TITLE_TEXT_SIZE // 3
+        rl.draw_text(
+            "New Score",
+            10,
+            SCREEN_HEIGHT // 2 - int(TITLE_TEXT_SIZE * 1.5),
+            TITLE_TEXT_SIZE,
+            rl.WHITE
+        )
+        rl.draw_text(
+            "enter your name:",
+            10,
+            SCREEN_HEIGHT // 2 - int(NORMAL_TEXT_SIZE),
+            NORMAL_TEXT_SIZE,
+            rl.WHITE
+        )
+        rl.draw_text(
+            s + "-" * (10 - len(s)),
+            10,
+            SCREEN_HEIGHT // 2,
+            TITLE_TEXT_SIZE,
+            rl.WHITE
+        )
+
+    def _read_input(self, s: str) -> str:
+        key = rl.get_char_pressed()
+        if rl.is_key_pressed(rl.KeyboardKey.KEY_BACKSPACE):
+            return s[:-1]
+        elif rl.is_key_pressed(rl.KeyboardKey.KEY_ENTER) and s:
+            return s + " " * (11 - len(s))
+        elif len(s) < 10:
+            key_char = chr(key)
+            if key_char.isalnum() or key_char == ' ':
+                return s + key_char
+        return s
+
+    def draw(self) -> None:
+        if not self._should_save():
+            return
+        name = ""
+        while not rl.window_should_close():
+            name = self._read_input(name)
+            if len(name) == 11:
+                break
+            rl.begin_drawing()
+            rl.clear_background(rl.BLACK)
+            self._draw_text(name)
+            rl.end_drawing()
+        if len(name) == 11:
+            self._save_in_file(name)
+
+############################################
+# HomePage
+############################################
 class HomeButton:
     rectangle: rl.Rectangle
     text: str
@@ -112,15 +178,12 @@ class HomePage:
         buttons: list[HomeButton] = HomeButton.create(["play", "score", "exit"])
         clicked_button: str | None = None
         while not rl.window_should_close():
+            mouse_click = rl.is_mouse_button_pressed(rl.MouseButton.MOUSE_BUTTON_LEFT)
+            mouse_pos = rl.get_mouse_position()
             rl.begin_drawing()
             rl.clear_background(rl.BLACK)
             Logo.draw()
-            clicked_button = cls.buttons(
-                buttons,
-                rl.is_mouse_button_pressed(rl.MOUSE_BUTTON_LEFT),
-                rl.get_mouse_position()
-            )
-
+            clicked_button = cls.buttons(buttons, mouse_click, mouse_pos)
             rl.end_drawing()
             if clicked_button is None:
                 continue
@@ -134,5 +197,7 @@ class HomePage:
             return None
 
 
+
 if __name__ == "__main__":
     HomePage.run()
+    SaveScorePage(10).draw()
