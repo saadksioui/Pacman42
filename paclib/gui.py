@@ -1,3 +1,5 @@
+from .score import Score
+from functools import lru_cache
 import pyray as rl
 
 rl.set_trace_log_level(rl.TraceLogLevel.LOG_NONE)
@@ -8,15 +10,67 @@ SCREEN_HEIGHT = rl.get_monitor_height(rl.get_current_monitor())
 rl.set_window_size(SCREEN_WIDTH, SCREEN_HEIGHT)
 rl.toggle_fullscreen()
 
-# top consts
-TOP_PADDING = SCREEN_HEIGHT * 15 / 100
-TOP_SECTION_HEIGHT = (SCREEN_HEIGHT * 30 / 100)
-# bottom consts
-BOTTOM_SECTION_HEIGHT = (SCREEN_HEIGHT * 50 / 100)
-BOTTOM_SECTION_Y_START = TOP_SECTION_HEIGHT
-BOTTOM_SECTION_Y_END = BOTTOM_SECTION_Y_START + BOTTOM_SECTION_HEIGHT
-BOTTOM_PADDING = SCREEN_HEIGHT * 15 / 100
+class LeaderBoardPage:
+    @lru_cache
+    @staticmethod
+    def _load_scores() -> list[Score]:
+        from random import randint
+        print("called once")
+        lst = [
+            Score(score=randint(300000, 600000), owner="puckman"),
+            Score(score=randint(1,10), owner="hello")
+        ]
+        for _ in range(8):
+            lst.append(Score(score=randint(1,30000), owner="hello"))
+        return lst
 
+    @classmethod
+    def _draw_scores(cls) -> None:
+        TITLE_SIZE = SCREEN_HEIGHT // 12
+        scores = cls._load_scores()
+        title_width = rl.measure_text("High Scores", TITLE_SIZE)
+        rl.draw_text(
+            "High Scores",
+            SCREEN_WIDTH // 2 - title_width // 2,
+            SCREEN_HEIGHT // 15,
+            TITLE_SIZE,
+            rl.RED
+        )
+        SCORES_Y_START = TITLE_SIZE + SCREEN_HEIGHT // 15 + 100
+        PADDING = 20
+        SCORE_TEXT_SIZE = (SCREEN_HEIGHT - SCORES_Y_START - 100 - 9 * PADDING) // 10
+        for i, sc in enumerate(scores, start=1):
+            text = str(i).rjust(2, " ") + ". "
+            text += sc.owner.ljust(11, " ")
+            text_width = rl.measure_text(text, SCORE_TEXT_SIZE)
+            rl.draw_text(
+                text,
+                SCREEN_WIDTH // 2 - text_width,
+                SCORES_Y_START + (i - 1) * (SCORE_TEXT_SIZE + PADDING),
+                SCORE_TEXT_SIZE,
+                rl.WHITE
+            )
+            rl.draw_text(
+                str(sc.score),
+                SCREEN_WIDTH // 2 + 47,
+                SCORES_Y_START + (i - 1) * (SCORE_TEXT_SIZE + PADDING),
+                SCORE_TEXT_SIZE,
+                rl.YELLOW
+            )
+
+
+    @classmethod
+    def draw(cls) -> None:
+        while not rl.window_should_close():
+            rl.begin_drawing()
+            rl.clear_background(rl.BLACK)
+            cls._draw_scores()
+            rl.end_drawing()
+
+
+############################################
+# SaveScorePage
+############################################
 class SaveScorePage:
     score: int
 
@@ -47,7 +101,7 @@ class SaveScorePage:
             rl.WHITE
         )
         rl.draw_text(
-            s + "-" * (10 - len(s)),
+            s.ljust(10, "-"),
             10,
             SCREEN_HEIGHT // 2,
             TITLE_TEXT_SIZE,
@@ -59,7 +113,7 @@ class SaveScorePage:
         if rl.is_key_pressed(rl.KeyboardKey.KEY_BACKSPACE):
             return s[:-1]
         elif rl.is_key_pressed(rl.KeyboardKey.KEY_ENTER) and s:
-            return s + " " * (11 - len(s))
+            return s.ljust(11, ' ')
         elif len(s) < 10:
             key_char = chr(key)
             if key_char.isalnum() or key_char == ' ':
@@ -84,6 +138,16 @@ class SaveScorePage:
 ############################################
 # HomePage
 ############################################
+
+# top consts
+TOP_PADDING = SCREEN_HEIGHT * 15 / 100
+TOP_SECTION_HEIGHT = (SCREEN_HEIGHT * 30 / 100)
+# bottom consts
+BOTTOM_SECTION_HEIGHT = (SCREEN_HEIGHT * 50 / 100)
+BOTTOM_SECTION_Y_START = TOP_SECTION_HEIGHT
+BOTTOM_SECTION_Y_END = BOTTOM_SECTION_Y_START + BOTTOM_SECTION_HEIGHT
+BOTTOM_PADDING = SCREEN_HEIGHT * 15 / 100
+
 class HomeButton:
     rectangle: rl.Rectangle
     text: str
@@ -188,7 +252,7 @@ class HomePage:
             if clicked_button is None:
                 continue
             elif clicked_button == "score":
-                raise NotImplementedError
+                LeaderBoardPage.draw()
             elif clicked_button == "play":
                 raise NotImplementedError
             else:
