@@ -15,7 +15,6 @@ class LeaderBoardPage:
     @staticmethod
     def _load_scores() -> list[Score]:
         from random import randint
-        print("called once")
         lst = [
             Score(score=randint(300000, 600000), owner="puckman"),
             Score(score=randint(1,10), owner="hello")
@@ -39,20 +38,19 @@ class LeaderBoardPage:
         SCORES_Y_START = TITLE_SIZE + SCREEN_HEIGHT // 15 + 100
         PADDING = 20
         SCORE_TEXT_SIZE = (SCREEN_HEIGHT - SCORES_Y_START - 100 - 9 * PADDING) // 10
+        TEXT_WIDTH = rl.measure_text("G"* 12, SCORE_TEXT_SIZE)
         for i, sc in enumerate(scores, start=1):
-            text = str(i).rjust(2, " ") + ". "
-            text += sc.owner.ljust(11, " ")
-            text_width = rl.measure_text(text, SCORE_TEXT_SIZE)
+            text = str(i) + ". " + sc.owner.ljust(11, " ")
             rl.draw_text(
                 text,
-                SCREEN_WIDTH // 2 - text_width,
+                SCREEN_WIDTH // 6,
                 SCORES_Y_START + (i - 1) * (SCORE_TEXT_SIZE + PADDING),
                 SCORE_TEXT_SIZE,
                 rl.WHITE
             )
             rl.draw_text(
                 str(sc.score),
-                SCREEN_WIDTH // 2 + 47,
+                SCREEN_WIDTH // 6 + 40 + TEXT_WIDTH,
                 SCORES_Y_START + (i - 1) * (SCORE_TEXT_SIZE + PADDING),
                 SCORE_TEXT_SIZE,
                 rl.YELLOW
@@ -88,23 +86,23 @@ class SaveScorePage:
         NORMAL_TEXT_SIZE = TITLE_TEXT_SIZE // 3
         rl.draw_text(
             "New Score",
-            10,
+            SCREEN_WIDTH // 4,
             SCREEN_HEIGHT // 2 - int(TITLE_TEXT_SIZE * 1.5),
             TITLE_TEXT_SIZE,
-            rl.WHITE
+            rl.GREEN
         )
         rl.draw_text(
             "enter your name:",
-            10,
+            SCREEN_WIDTH // 4,
             SCREEN_HEIGHT // 2 - int(NORMAL_TEXT_SIZE),
             NORMAL_TEXT_SIZE,
             rl.WHITE
         )
         rl.draw_text(
             s.ljust(10, "-"),
-            10,
+            SCREEN_WIDTH // 4,
             SCREEN_HEIGHT // 2,
-            TITLE_TEXT_SIZE,
+            SCREEN_HEIGHT // 9,
             rl.WHITE
         )
 
