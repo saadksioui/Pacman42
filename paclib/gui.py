@@ -8,10 +8,14 @@ SCREEN_HEIGHT = rl.get_monitor_height(rl.get_current_monitor())
 rl.set_window_size(SCREEN_WIDTH, SCREEN_HEIGHT)
 rl.toggle_fullscreen()
 
+# top consts
+TOP_PADDING = SCREEN_HEIGHT * 15 / 100
+TOP_SECTION_HEIGHT = (SCREEN_HEIGHT * 30 / 100)
 # bottom consts
-BOTTOM_SECTION_HEIGHT = SCREEN_HEIGHT * 40 / 100
-BOTTOM_PADDING = SCREEN_WIDTH * 7 / 100
-BUTTON_SPACING = 15
+BOTTOM_SECTION_HEIGHT = (SCREEN_HEIGHT * 50 / 100)
+BOTTOM_SECTION_Y_START = TOP_SECTION_HEIGHT
+BOTTOM_SECTION_Y_END = BOTTOM_SECTION_Y_START + BOTTOM_SECTION_HEIGHT
+BOTTOM_PADDING = SCREEN_HEIGHT * 15 / 100
 
 
 class HomeButton:
@@ -46,7 +50,8 @@ class HomeButton:
 
     @classmethod
     def create(cls, options: list[str]) -> list["HomeButton"]:
-        BUTTON_HEIGHT = (BOTTOM_SECTION_HEIGHT - BOTTOM_PADDING * 2 + BUTTON_SPACING * len(options)) / len(options)
+        BUTTON_SPACING = 15
+        BUTTON_HEIGHT = (BOTTOM_SECTION_HEIGHT - BOTTOM_PADDING * 2) / len(options)
         BUTTON_WIDTH = BUTTON_HEIGHT * 5
         buttons = []
         for i, text in enumerate(options):
@@ -55,9 +60,7 @@ class HomeButton:
                     text,
                     rl.Rectangle(
                         int(SCREEN_WIDTH / 2 - BUTTON_WIDTH / 2),
-                        int(BOTTOM_SECTION_HEIGHT
-                        + BOTTOM_PADDING
-                        + i * (BUTTON_HEIGHT + BUTTON_SPACING)),
+                        int(BOTTOM_SECTION_Y_START + BOTTOM_PADDING + i * (BUTTON_HEIGHT + BUTTON_SPACING)),
                         int(BUTTON_WIDTH),
                         int(BUTTON_HEIGHT),
                     ),
@@ -69,7 +72,7 @@ class HomeButton:
 
 class Logo:
     texture: rl.Texture = rl.load_texture("assets/logo.png")
-    SCALE = (SCREEN_HEIGHT * 35 / 100 - SCREEN_HEIGHT * 15 / 100) / texture.height
+    SCALE = (TOP_SECTION_HEIGHT / 2) / texture.height
 
     @classmethod
     def draw(cls) -> None:
@@ -77,9 +80,9 @@ class Logo:
             cls.texture,
             rl.Vector2(
                 (SCREEN_WIDTH / 2 - cls.texture.width * cls.SCALE / 2),
-                SCREEN_HEIGHT * 15 / 2 / 100
+                TOP_PADDING
             ),
-            0.0,    # rotation
+            0.0,  # rotation
             cls.SCALE,
             rl.WHITE
         )
@@ -123,10 +126,12 @@ class HomePage:
                 continue
             elif clicked_button == "score":
                 raise NotImplementedError
+            elif clicked_button == "play":
+                raise NotImplementedError
             else:
-                break
-        return clicked_button
-
+                return None
+        else:
+            return None
 
 
 if __name__ == "__main__":
