@@ -1,14 +1,7 @@
 from .score import Score
 from functools import lru_cache
 import pyray as rl
-
-rl.set_trace_log_level(rl.TraceLogLevel.LOG_NONE)
-rl.init_window(10, 10, "Pacman")
-
-SCREEN_WIDTH = rl.get_monitor_width(rl.get_current_monitor())
-SCREEN_HEIGHT = rl.get_monitor_height(rl.get_current_monitor())
-rl.set_window_size(SCREEN_WIDTH, SCREEN_HEIGHT)
-rl.toggle_fullscreen()
+from gui import SCREEN_HEIGHT, SCREEN_WIDTH
 
 class LeaderBoardPage:
     @lru_cache
@@ -257,9 +250,3 @@ class HomePage:
                 return None
         else:
             return None
-
-
-
-if __name__ == "__main__":
-    HomePage.run()
-    SaveScorePage(10).draw()
