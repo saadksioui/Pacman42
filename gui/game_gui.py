@@ -173,13 +173,54 @@ class PacmanRender(EntityRender):
         super().draw()
 
 
+class GhostRender(EntityRender):
+    maze_rend: MazeRender
+
+    def __init__(self, maze_rend: MazeRender, ghost: Ghost) -> None:
+        self.maze_rend = maze_rend
+        super().__init__(
+            ghost,
+            1,
+            rl.Rectangle(0, ghost.type.value * self.MASK_REC_DIMENSION, self.MASK_REC_DIMENSION, self.MASK_REC_DIMENSION),
+            rl.Rectangle(ghost.pos.x, ghost.pos.y, maze_rend.wall_length, maze_rend.wall_length)
+        )
+
+    @override
+    def draw(self) -> None:
+        idx = {
+            Direction.RIGHT: 0, Direction.NONE: 0,
+            Direction.LEFT: 1,
+            Direction.UP: 2,
+            Direction.DOWN: 3,
+        }
+        self.src_mask_rec.x = (idx[self.entity.cur_direction]) * self.MASK_REC_DIMENSION * 2
+        if self.cur_frame:
+            self.src_mask_rec.x += self.MASK_REC_DIMENSION
+        super().draw()
+
+
 class GameLoop:
     maze_rend: MazeRender
     pacman_rend: PacmanRender
+    ghosts_rend: list[GhostRender]
 
     def __init__(self, maze_rend: MazeRender) -> None:
         self.maze_rend = maze_rend
         self.pacman_rend = PacmanRender(maze_rend)
+        self.ghosts_rend = self._create_ghosts()
+
+    def _create_ghosts(self) -> list[GhostRender]:
+        ghosttype = [
+            Ghost.GhostType.Blinky, Ghost.GhostType.Pinky,
+            Ghost.GhostType.Inky, Ghost.GhostType.Clyde
+        ]
+        return [
+            GhostRender(
+                self.maze_rend,
+                Ghost(rl.Vector2(self.maze_rend.start_x, self.maze_rend.start_y), gt),
+            )
+            for gt in ghosttype
+        ]
 
     def _get_cell(self, entity: Entity) -> int:
         maze_x = round((entity.pos.x - self.maze_rend.start_x) / self.maze_rend.wall_length)
@@ -198,7 +239,6 @@ class GameLoop:
     def _correct_cord(self, entity: Entity) -> None:
         maze_x = round((entity.pos.x - self.maze_rend.start_x) / self.maze_rend.wall_length)
         maze_y = round((entity.pos.y - self.maze_rend.start_y) / self.maze_rend.wall_length)
-        print(maze_x, maze_y)
         entity.pos.x = self.maze_rend.start_x + self.maze_rend.wall_length * maze_x
         entity.pos.y = self.maze_rend.start_y + self.maze_rend.wall_length * maze_y
 
@@ -249,13 +289,29 @@ class GameLoop:
         elif rl.is_key_down(rl.KeyboardKey.KEY_RIGHT):
             self.pacman_rend.entity.nxt_direction = Direction.RIGHT
 
+    def _set_ghost_path(self, ghost: Ghost) -> None:
+        if self._can_move_to_direction(ghost.cur_direction, ghost):
+            return
+        import random
+        walls = self._get_cell(ghost)
+        directions = [Direction.DOWN, Direction.UP, Direction.LEFT, Direction.RIGHT]
+        available = [d for d in directions if not walls & d ]
+        ghost.nxt_direction = random.choice(available)
+
+
     def run(self) -> None:
         while not rl.window_should_close():
             self._handle_keyboard()
+            for g in self.ghosts_rend:
+                assert isinstance(g.entity, Ghost)
+                self._set_ghost_path(g.entity)
+                self._move_entity(g.entity)
             self._move_entity(self.pacman_rend.entity)
             rl.begin_drawing()
             rl.clear_background(rl.BLACK)
             self.maze_rend.draw()
+            for g in self.ghosts_rend:
+                g.draw()
             self.pacman_rend.draw()
             rl.draw_text(str(rl.get_fps()), 7, 7, 25, rl.WHITE)
             rl.end_drawing()

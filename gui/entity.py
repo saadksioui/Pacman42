@@ -1,5 +1,5 @@
 from abc import abstractmethod, ABC
-from enum import IntEnum, auto
+from enum import Enum, IntEnum, auto
 import pyray as rl
 
 class Direction(IntEnum):
@@ -30,8 +30,17 @@ class Entity(ABC):
 
 
 class Ghost(Entity):
-    def __init__(self, start_pos: rl.Vector2, speed: float) -> None:
-        super().__init__(start_pos, speed)
+    class GhostType(IntEnum):
+        Blinky = 4
+        Pinky = 5
+        Inky = 6
+        Clyde = 7
+
+    type: GhostType
+
+    def __init__(self, start_pos: rl.Vector2, type: GhostType) -> None:
+        super().__init__(start_pos, 1.5)
+        self.type = type
 
 
 
