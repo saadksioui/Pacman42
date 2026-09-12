@@ -1,7 +1,9 @@
+from typing import override
+
 import pyray as rl
 from gui import SCREEN_HEIGHT, SCREEN_WIDTH
 from mazegenerator import MazeGenerator
-from .entity import Entity, Ghost
+from .entity import Direction, Entity, Ghost, Pacman
 
 
 WALL_THICKNESS: float = 2.0
@@ -94,61 +96,166 @@ class MazeRender:
                         l,
                         rl.RED
                     )
-
-
-class GhostRender:
-    GHOSTS_TEXTURE: rl.Texture = rl.load_texture("assets/ghosts.png")
-    GHOSTS_REC_HEIGHT: float = GHOSTS_TEXTURE.height / 12
-    GHOSTS_REC_WIDTH: float = GHOSTS_TEXTURE.width / 12
-    frame_rec: rl.Rectangle = rl.Rectangle(
-       0, 0, GHOSTS_REC_WIDTH, GHOSTS_REC_HEIGHT
-    )
+class EntityRender:
+    TEXTURE: rl.Texture = rl.load_texture("assets/everything.png")
+    MASK_REC_DIMENSION: float = 16 # linked to assets (227px // 16 frame)
 
     entity: Entity
-    frames_counter: int = 0
-    current_frame: int = 0
-    max_frames_index: int = 1
 
-    def __init__(self, entity: Entity, fps: int) -> None:
+    max_frames: int
+    cur_frame: int
+
+    src_mask_rec: rl.Rectangle
+    dst_mask_rec: rl.Rectangle
+
+
+    def __init__(
+        self,
+        entity: Entity,
+        max_frames: int,
+        src_mask_rec: rl.Rectangle,
+        dst_mask_rec: rl.Rectangle
+    ) -> None:
         self.entity = entity
-        self.fps: int = fps
+        self.max_frames = max_frames
+        self.cur_frame = 0
+        self.src_mask_rec = src_mask_rec
+        self.dst_mask_rec = dst_mask_rec
+
+        self._frame_count: int = 0
 
     def draw(self) -> None:
-        frame_speed: int = 7
-        self.frames_counter += 1
-        if self.frames_counter >= self.fps / frame_speed:
-            self.frames_counter = 0
-            self.current_frame += 1
-            if self.current_frame >  self.max_frames_index:
-                self.current_frame = 0
-            self.frame_rec.x = self.current_frame * self.GHOSTS_REC_WIDTH
-
-
-        dst_rect = rl.Rectangle(
-            200, 200, 100, 100
-        )
+        # to switch between sprite sheet
+        FRAME_SPEED = 7
+        self._frame_count += 1
+        if self._frame_count >= rl.get_fps() / FRAME_SPEED:
+            self._frame_count = 0
+            self.cur_frame += 1
+            if self.cur_frame > self.max_frames:
+                self.cur_frame = 0
+                self.src_mask_rec.x -= self.max_frames * self.MASK_REC_DIMENSION
+            else:
+                self.src_mask_rec.x += self.MASK_REC_DIMENSION
+        self.dst_mask_rec.x = self.entity.pos.x
+        self.dst_mask_rec.y = self.entity.pos.y
         rl.draw_texture_pro(
-            self.GHOSTS_TEXTURE,
-            self.frame_rec,
-            dst_rect,
-            (50, 50),
+            self.TEXTURE,
+            self.src_mask_rec,
+            self.dst_mask_rec,
+            (0, 0),
             0.0,
             rl.WHITE
         )
 
+class PacmanRender(EntityRender):
+    maze_rend: MazeRender
+
+    def __init__(self, maze_rend: MazeRender) -> None:
+        self.maze_rend = maze_rend
+        super().__init__(
+            Pacman(
+                vct := rl.Vector2(maze_rend.start_x, maze_rend.start_y)
+            ),
+            2,
+            rl.Rectangle(0, 0, self.MASK_REC_DIMENSION, self.MASK_REC_DIMENSION),
+            rl.Rectangle(vct.x, vct.y, maze_rend.wall_length, maze_rend.wall_length)
+        )
+
+    @override
+    def draw(self) -> None:
+        idx = {
+            Direction.RIGHT: 0, Direction.NONE: 0,
+            Direction.LEFT: 1,
+            Direction.UP: 2,
+            Direction.DOWN: 3,
+        }
+        self.src_mask_rec.y = idx[self.entity.cur_direction] * self.MASK_REC_DIMENSION
+        super().draw()
 
 
+class GameLoop:
+    maze_rend: MazeRender
+    pacman_rend: PacmanRender
 
-m = MazeRender(MazeGenerator().maze)
-ghost = Ghost(rl.Vector2(0,0), 0)
-g1 = GhostRender(ghost, 500)
-while not rl.window_should_close():
-    fps = rl.get_fps()
-    # draw framerate
-    rl.draw_text(str(fps), 7, 7, 25, rl.WHITE)
+    def __init__(self, maze_rend: MazeRender) -> None:
+        self.maze_rend = maze_rend
+        self.pacman_rend = PacmanRender(maze_rend)
 
-    rl.begin_drawing()
-    rl.clear_background(rl.BLACK)
-    m.draw()
-    g1.draw()
-    rl.end_drawing()
+    def _get_cell(self, entity: Entity) -> int:
+        maze_x = round((entity.pos.x - self.maze_rend.start_x) / self.maze_rend.wall_length)
+        maze_y = round((entity.pos.y - self.maze_rend.start_y) / self.maze_rend.wall_length)
+        return self.maze_rend.maze[maze_y][maze_x]
+
+    def _can_move_to_direction(self, dirct: Direction, entity: Entity) -> bool:
+        if dirct is Direction.NONE:
+            return False
+        return not (self._get_cell(entity) & dirct.value)
+
+    def _can_correct_cord(self, entity: Entity) -> bool:
+        return ((entity.pos.x - self.maze_rend.start_x) / self.maze_rend.wall_length) % 1 < 0.1\
+            and ((entity.pos.y - self.maze_rend.start_y) / self.maze_rend.wall_length) % 1 < 0.1
+
+    def _correct_cord(self, entity: Entity) -> None:
+        maze_x = round((entity.pos.x - self.maze_rend.start_x) / self.maze_rend.wall_length)
+        maze_y = round((entity.pos.y - self.maze_rend.start_y) / self.maze_rend.wall_length)
+        print(maze_x, maze_y)
+        entity.pos.x = self.maze_rend.start_x + self.maze_rend.wall_length * maze_x
+        entity.pos.y = self.maze_rend.start_y + self.maze_rend.wall_length * maze_y
+
+
+    def _move_entity(self, entity: Entity) -> None:
+        if entity.cur_direction is Direction.NONE:
+            entity.cur_direction = entity.nxt_direction
+            return
+
+        if self._can_move_to_direction(entity.nxt_direction, entity) and entity.nxt_direction is not entity.cur_direction:
+            if self._can_correct_cord(entity):
+                entity.cur_direction = entity.nxt_direction
+                entity.nxt_direction = Direction.NONE
+                self._correct_cord(entity)
+                return
+        if self._can_move_to_direction(entity.cur_direction, entity):
+            to_move = self.maze_rend.wall_length * entity.speed * rl.get_frame_time()
+            match entity.cur_direction:
+                case Direction.UP:
+                    entity.pos.y -= to_move
+                case Direction.DOWN:
+                    entity.pos.y += to_move
+                case Direction.LEFT:
+                    entity.pos.x -= to_move
+                case Direction.RIGHT:
+                    entity.pos.x += to_move
+        elif not self._can_correct_cord(entity):
+            to_move = self.maze_rend.wall_length * entity.speed * rl.get_frame_time()
+            match entity.cur_direction:
+                case Direction.UP:
+                    entity.pos.y -= to_move
+                case Direction.DOWN:
+                    entity.pos.y += to_move
+                case Direction.LEFT:
+                    entity.pos.x -= to_move
+                case Direction.RIGHT:
+                    entity.pos.x += to_move
+        else:
+            self._correct_cord(entity)
+
+    def _handle_keyboard(self) -> None:
+        if rl.is_key_down(rl.KeyboardKey.KEY_DOWN):
+            self.pacman_rend.entity.nxt_direction = Direction.DOWN
+        elif rl.is_key_down(rl.KeyboardKey.KEY_UP):
+            self.pacman_rend.entity.nxt_direction = Direction.UP
+        if rl.is_key_down(rl.KeyboardKey.KEY_LEFT):
+            self.pacman_rend.entity.nxt_direction = Direction.LEFT
+        elif rl.is_key_down(rl.KeyboardKey.KEY_RIGHT):
+            self.pacman_rend.entity.nxt_direction = Direction.RIGHT
+
+    def run(self) -> None:
+        while not rl.window_should_close():
+            self._handle_keyboard()
+            self._move_entity(self.pacman_rend.entity)
+            rl.begin_drawing()
+            rl.clear_background(rl.BLACK)
+            self.maze_rend.draw()
+            self.pacman_rend.draw()
+            rl.draw_text(str(rl.get_fps()), 7, 7, 25, rl.WHITE)
+            rl.end_drawing()

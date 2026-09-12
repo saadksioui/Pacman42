@@ -1,18 +1,19 @@
 from abc import abstractmethod, ABC
-from enum import Enum, auto
+from enum import IntEnum, auto
 import pyray as rl
 
-class Direction(Enum):
-    UP = auto()
-    DOWN = auto()
-    LEFT = auto()
-    RIGHT = auto()
-    NONE = auto()
+class Direction(IntEnum):
+    UP = 0b0001
+    DOWN = 0b0100
+    LEFT = 0b1000
+    RIGHT = 0b0010
+    NONE = 0
 
 
 class Entity(ABC):
     pos: rl.Vector2
-    direction: Direction
+    cur_direction: Direction
+    nxt_direction: Direction
     speed: float
     frame_count: int
 
@@ -23,11 +24,17 @@ class Entity(ABC):
         speed: float
     ) -> None:
         self.pos = start_pos
-        self.direction = Direction.NONE
+        self.cur_direction = Direction.NONE
+        self.nxt_direction = Direction.NONE
         self.speed = speed
 
 
 class Ghost(Entity):
-    frame_count: int = 2
     def __init__(self, start_pos: rl.Vector2, speed: float) -> None:
         super().__init__(start_pos, speed)
+
+
+
+class Pacman(Entity):
+    def __init__(self, start_pos: rl.Vector2) -> None:
+        super().__init__(start_pos, 4.2)
