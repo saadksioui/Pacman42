@@ -39,7 +39,7 @@ class Ghost(Entity):
     type: GhostType
 
     def __init__(self, start_pos: rl.Vector2, type: GhostType) -> None:
-        super().__init__(start_pos, 1.5)
+        super().__init__(start_pos, 7)
         self.type = type
 
 
@@ -47,3 +47,9 @@ class Ghost(Entity):
 class Pacman(Entity):
     def __init__(self, start_pos: rl.Vector2) -> None:
         super().__init__(start_pos, 4.2)
+
+
+class Pacgum:
+    pos: rl.Vector2
+    def __init__(self, pos: rl.Vector2) -> None:
+        self.pos = pos

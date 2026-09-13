@@ -1,9 +1,10 @@
+from tkinter import NONE
 from typing import override
 
 import pyray as rl
 from gui import SCREEN_HEIGHT, SCREEN_WIDTH
 from mazegenerator import MazeGenerator
-from .entity import Direction, Entity, Ghost, Pacman
+from .entity import Direction, Entity, Ghost, Pacgum, Pacman
 
 
 WALL_THICKNESS: float = 2.0
@@ -96,6 +97,32 @@ class MazeRender:
                         l,
                         rl.RED
                     )
+
+    def get_cell_cord(self, entity: Entity) -> tuple[int, int]:
+        maze_x = round((entity.pos.x - self.start_x) / self.wall_length)
+        maze_y = round((entity.pos.y - self.start_y) / self.wall_length)
+        return maze_x, maze_y
+
+    def get_cell(self, entity: Entity) -> int:
+        maze_x, maze_y = self.get_cell_cord(entity)
+        return self.maze[maze_y][maze_x]
+
+    def can_move_to_direction(self, dirct: Direction, entity: Entity) -> bool:
+        if dirct is Direction.NONE:
+            return False
+        return not (self.get_cell(entity) & dirct.value)
+
+    def is_close_cellcenter(self, entity: Entity) -> bool:
+        return ((entity.pos.x - self.start_x) / self.wall_length) % 1 < 0.1\
+            and ((entity.pos.y - self.start_y) / self.wall_length) % 1 < 0.1
+
+    def move_to_cellcenter(self, entity: Entity) -> None:
+        maze_x, maze_y = self.get_cell_cord(entity)
+        entity.pos.x = self.start_x + self.wall_length * maze_x
+        entity.pos.y = self.start_y + self.wall_length * maze_y
+
+
+
 class EntityRender:
     TEXTURE: rl.Texture = rl.load_texture("assets/everything.png")
     MASK_REC_DIMENSION: float = 16 # linked to assets (227px // 16 frame)
@@ -199,15 +226,58 @@ class GhostRender(EntityRender):
         super().draw()
 
 
+class PacgumRender:
+    def __init__(self, maze_rend: MazeRender) -> None:
+        self.pacgum_map: list[list[Pacgum | None]] = []
+        self.pacgum_set: set[Pacgum] = set()
+        self.maze_rend: MazeRender = maze_rend
+        self.PACGUM_RADIUS: float = max(maze_rend.wall_length / 20, 1)
+        for i, row in enumerate(maze_rend.maze):
+            self.pacgum_map.append([])
+            for j, cell in enumerate(row):
+                if cell == 0xf:
+                    self.pacgum_map[-1].append(None)
+                    continue
+                self.pacgum_map[-1].append(pg := Pacgum(rl.Vector2(
+                    maze_rend.start_x + maze_rend.wall_length * j + maze_rend.wall_length / 2,
+                    maze_rend.start_y + maze_rend.wall_length * i + maze_rend.wall_length / 2
+                )))
+                self.pacgum_set.add(pg)
+    def draw(self) -> None:
+        for pg in self.pacgum_set:
+            rl.draw_circle(
+                int(pg.pos.x),
+                int(pg.pos.y),
+                self.PACGUM_RADIUS,
+                rl.PURPLE
+            )
+
+
+    def pacman_collect(self, pacman: Entity) -> int:
+        maze_x, maze_y = self.maze_rend.get_cell_cord(pacman)
+        pg = self.pacgum_map[maze_y][maze_x]
+        if pg is None:
+            return 0
+        if self.maze_rend.is_close_cellcenter(pacman):
+            self.pacgum_set.remove(pg)
+            self.pacgum_map[maze_y][maze_x] = None
+        return 0
+
+
+
+
+
 class GameLoop:
     maze_rend: MazeRender
     pacman_rend: PacmanRender
     ghosts_rend: list[GhostRender]
+    pacgum_rend: PacgumRender
 
     def __init__(self, maze_rend: MazeRender) -> None:
         self.maze_rend = maze_rend
         self.pacman_rend = PacmanRender(maze_rend)
         self.ghosts_rend = self._create_ghosts()
+        self.pacgum_rend = PacgumRender(maze_rend)
 
     def _create_ghosts(self) -> list[GhostRender]:
         ghosttype = [
@@ -222,39 +292,19 @@ class GameLoop:
             for gt in ghosttype
         ]
 
-    def _get_cell(self, entity: Entity) -> int:
-        maze_x = round((entity.pos.x - self.maze_rend.start_x) / self.maze_rend.wall_length)
-        maze_y = round((entity.pos.y - self.maze_rend.start_y) / self.maze_rend.wall_length)
-        return self.maze_rend.maze[maze_y][maze_x]
-
-    def _can_move_to_direction(self, dirct: Direction, entity: Entity) -> bool:
-        if dirct is Direction.NONE:
-            return False
-        return not (self._get_cell(entity) & dirct.value)
-
-    def _can_correct_cord(self, entity: Entity) -> bool:
-        return ((entity.pos.x - self.maze_rend.start_x) / self.maze_rend.wall_length) % 1 < 0.1\
-            and ((entity.pos.y - self.maze_rend.start_y) / self.maze_rend.wall_length) % 1 < 0.1
-
-    def _correct_cord(self, entity: Entity) -> None:
-        maze_x = round((entity.pos.x - self.maze_rend.start_x) / self.maze_rend.wall_length)
-        maze_y = round((entity.pos.y - self.maze_rend.start_y) / self.maze_rend.wall_length)
-        entity.pos.x = self.maze_rend.start_x + self.maze_rend.wall_length * maze_x
-        entity.pos.y = self.maze_rend.start_y + self.maze_rend.wall_length * maze_y
-
 
     def _move_entity(self, entity: Entity) -> None:
         if entity.cur_direction is Direction.NONE:
             entity.cur_direction = entity.nxt_direction
             return
 
-        if self._can_move_to_direction(entity.nxt_direction, entity) and entity.nxt_direction is not entity.cur_direction:
-            if self._can_correct_cord(entity):
+        if self.maze_rend.can_move_to_direction(entity.nxt_direction, entity) and entity.nxt_direction is not entity.cur_direction:
+            if self.maze_rend.is_close_cellcenter(entity):
                 entity.cur_direction = entity.nxt_direction
                 entity.nxt_direction = Direction.NONE
-                self._correct_cord(entity)
+                self.maze_rend.move_to_cellcenter(entity)
                 return
-        if self._can_move_to_direction(entity.cur_direction, entity):
+        if self.maze_rend.can_move_to_direction(entity.cur_direction, entity):
             to_move = self.maze_rend.wall_length * entity.speed * rl.get_frame_time()
             match entity.cur_direction:
                 case Direction.UP:
@@ -265,7 +315,7 @@ class GameLoop:
                     entity.pos.x -= to_move
                 case Direction.RIGHT:
                     entity.pos.x += to_move
-        elif not self._can_correct_cord(entity):
+        elif not self.maze_rend.is_close_cellcenter(entity):
             to_move = self.maze_rend.wall_length * entity.speed * rl.get_frame_time()
             match entity.cur_direction:
                 case Direction.UP:
@@ -277,7 +327,7 @@ class GameLoop:
                 case Direction.RIGHT:
                     entity.pos.x += to_move
         else:
-            self._correct_cord(entity)
+            self.maze_rend.move_to_cellcenter(entity)
 
     def _handle_keyboard(self) -> None:
         if rl.is_key_down(rl.KeyboardKey.KEY_DOWN):
@@ -290,10 +340,10 @@ class GameLoop:
             self.pacman_rend.entity.nxt_direction = Direction.RIGHT
 
     def _set_ghost_path(self, ghost: Ghost) -> None:
-        if self._can_move_to_direction(ghost.cur_direction, ghost):
+        if self.maze_rend.can_move_to_direction(ghost.cur_direction, ghost):
             return
         import random
-        walls = self._get_cell(ghost)
+        walls = self.maze_rend.get_cell(ghost)
         directions = [Direction.DOWN, Direction.UP, Direction.LEFT, Direction.RIGHT]
         available = [d for d in directions if not walls & d ]
         ghost.nxt_direction = random.choice(available)
@@ -307,9 +357,11 @@ class GameLoop:
                 self._set_ghost_path(g.entity)
                 self._move_entity(g.entity)
             self._move_entity(self.pacman_rend.entity)
+            self.pacgum_rend.pacman_collect(self.pacman_rend.entity)
             rl.begin_drawing()
             rl.clear_background(rl.BLACK)
             self.maze_rend.draw()
+            self.pacgum_rend.draw()
             for g in self.ghosts_rend:
                 g.draw()
             self.pacman_rend.draw()
