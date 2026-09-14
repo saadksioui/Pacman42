@@ -14,6 +14,9 @@ class _Direction(IntEnum):
     RIGHT = 0b0010
     NONE = 0
 
+PACMAN_SPEED: float = 4.2
+CHASE_GHOST_SPEED: float = 3.0
+FRIGHTENED_GHOST_SPEED: float = 2.0
 
 class _Entity:
     pos: rl.Vector2
@@ -49,7 +52,7 @@ class _Ghost(_Entity):
     state: GhostState
 
     def __init__(self, start_pos: rl.Vector2, type: GhostType) -> None:
-        super().__init__(start_pos, 3)
+        super().__init__(start_pos, CHASE_GHOST_SPEED)
         self.type = type
         self.state = _Ghost.GhostState.CHASE
 
@@ -57,7 +60,7 @@ class _Ghost(_Entity):
 
 class _Pacman(_Entity):
     def __init__(self, start_pos: rl.Vector2) -> None:
-        super().__init__(start_pos, 4.2)
+        super().__init__(start_pos, PACMAN_SPEED)
 
 
 class _Pacgum:
@@ -298,11 +301,13 @@ class _GhostRender(_EntityRender):
                 self.cur_frame = 0
                 self.src_mask_rec.x = 16 * 8
                 self.src_mask_rec.y = 16 * 4
-                self.max_frames = 3
+                self.max_frames = 1
+                self.ghost.speed = FRIGHTENED_GHOST_SPEED
             case _Ghost.GhostState.CHASE:
                 self.cur_frame = 0
-                self.max_frames = 2
+                self.max_frames = 1
                 self.src_mask_rec.y = self.ghost.type * 16
+                self.ghost.speed = CHASE_GHOST_SPEED
 
         self.ghost.state = new_state
 
@@ -310,6 +315,8 @@ class _GhostRender(_EntityRender):
         if self.ghost.state is not _Ghost.GhostState.FRIGHTENED:
             return
         self.frightened_timer += rl.get_frame_time()
+        if 4 < self.frightened_timer < 7:
+            self.max_frames = 3
         if self.frightened_timer > 7:
             self.change_state(_Ghost.GhostState.CHASE)
 
