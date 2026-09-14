@@ -1,9 +1,8 @@
-# from .gui import HomePage
-# from .config import Config, Level
+from .menus import HomePage
+from .config import CONFIG
 
 
-# __all__ = (
-#     "HomePage",
-#     "Config",
-#     "Level"
-# )
+__all__ = (
+    "HomePage",
+    "CONFIG",
+)

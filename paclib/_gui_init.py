@@ -1,5 +1,6 @@
 import pyray as rl
 
+
 rl.set_trace_log_level(rl.TraceLogLevel.LOG_NONE)
 rl.init_window(10, 10, "Pacman")
 

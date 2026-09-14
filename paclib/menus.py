@@ -1,7 +1,12 @@
+from .config import CONFIG
+from mazegenerator import MazeGenerator
 from .score import Score
 from functools import lru_cache
+from .engine import GameLoop
+from ._gui_init import SCREEN_HEIGHT, SCREEN_WIDTH
 import pyray as rl
-from gui import SCREEN_HEIGHT, SCREEN_WIDTH
+
+
 
 class LeaderBoardPage:
     @lru_cache
@@ -51,8 +56,10 @@ class LeaderBoardPage:
 
 
     @classmethod
-    def draw(cls) -> None:
+    def display(cls) -> None:
         while not rl.window_should_close():
+            if rl.is_key_pressed(rl.KeyboardKey.KEY_ENTER):
+                break
             rl.begin_drawing()
             rl.clear_background(rl.BLACK)
             cls._draw_scores()
@@ -127,6 +134,20 @@ class SaveScorePage:
             self._save_in_file(name)
 
 ############################################
+# GamePage
+############################################
+class GamePage:
+    @staticmethod
+    def draw() -> None:
+        levels = CONFIG.levels
+        while not rl.window_should_close() or levels:
+            lvl = levels[0]
+            levels = levels[1:]
+            maze = MazeGenerator(size=(lvl.height, lvl.width), seed=CONFIG.seed).maze
+            GameLoop(maze).run()
+
+
+############################################
 # HomePage
 ############################################
 
@@ -139,7 +160,7 @@ BOTTOM_SECTION_Y_START = TOP_SECTION_HEIGHT
 BOTTOM_SECTION_Y_END = BOTTOM_SECTION_Y_START + BOTTOM_SECTION_HEIGHT
 BOTTOM_PADDING = SCREEN_HEIGHT * 15 / 100
 
-class HomeButton:
+class _HomeButton:
     rectangle: rl.Rectangle
     text: str
     selected: bool
@@ -170,7 +191,7 @@ class HomeButton:
         )
 
     @classmethod
-    def create(cls, options: list[str]) -> list["HomeButton"]:
+    def create(cls, options: list[str]) -> list["_HomeButton"]:
         BUTTON_SPACING = 15
         BUTTON_HEIGHT = (BOTTOM_SECTION_HEIGHT - BOTTOM_PADDING * 2) / len(options)
         BUTTON_WIDTH = BUTTON_HEIGHT * 5
@@ -191,7 +212,7 @@ class HomeButton:
         return buttons
 
 
-class Logo:
+class _Logo:
     texture: rl.Texture = rl.load_texture("assets/logo.png")
     SCALE = (TOP_SECTION_HEIGHT / 2) / texture.height
 
@@ -212,7 +233,7 @@ class Logo:
 class HomePage:
     @staticmethod
     def buttons(
-        buttons: list[HomeButton],
+        buttons: list[_HomeButton],
         mouse_pressed: bool,
         mouse_position: rl.Vector2
     ) -> str | None:
@@ -229,24 +250,24 @@ class HomePage:
         return None
 
     @classmethod
-    def run(cls) -> str | None:
-        buttons: list[HomeButton] = HomeButton.create(["play", "score", "exit"])
+    def start(cls) -> None:
+        buttons: list[_HomeButton] = _HomeButton.create(["play", "score", "exit"])
         clicked_button: str | None = None
         while not rl.window_should_close():
             mouse_click = rl.is_mouse_button_pressed(rl.MouseButton.MOUSE_BUTTON_LEFT)
             mouse_pos = rl.get_mouse_position()
             rl.begin_drawing()
             rl.clear_background(rl.BLACK)
-            Logo.draw()
+            _Logo.draw()
             clicked_button = cls.buttons(buttons, mouse_click, mouse_pos)
             rl.end_drawing()
+
+
             if clicked_button is None:
-                continue
+                pass
             elif clicked_button == "score":
-                LeaderBoardPage.draw()
+                LeaderBoardPage.display()
             elif clicked_button == "play":
-                raise NotImplementedError
+                GamePage.draw()
             else:
-                return None
-        else:
-            return None
+                return

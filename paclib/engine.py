@@ -1,17 +1,67 @@
-from tkinter import NONE
-from typing import override
-
 import pyray as rl
-from gui import SCREEN_HEIGHT, SCREEN_WIDTH
-from mazegenerator import MazeGenerator
-from .entity import Direction, Entity, Ghost, Pacgum, Pacman
+from typing import override
+from ._gui_init import SCREEN_HEIGHT, SCREEN_WIDTH
+from enum import IntEnum
+
+
+
+class _Direction(IntEnum):
+    UP = 0b0001
+    DOWN = 0b0100
+    LEFT = 0b1000
+    RIGHT = 0b0010
+    NONE = 0
+
+
+class _Entity:
+    pos: rl.Vector2
+    cur_direction: _Direction
+    nxt_direction: _Direction
+    speed: float
+
+
+    def __init__(
+        self,
+        start_pos: rl.Vector2,
+        speed: float
+    ) -> None:
+        self.pos = start_pos
+        self.cur_direction = _Direction.NONE
+        self.nxt_direction = _Direction.NONE
+        self.speed = speed
+
+
+class _Ghost(_Entity):
+    class GhostType(IntEnum):
+        Blinky = 4
+        Pinky = 5
+        Inky = 6
+        Clyde = 7
+
+    type: GhostType
+
+    def __init__(self, start_pos: rl.Vector2, type: GhostType) -> None:
+        super().__init__(start_pos, 7)
+        self.type = type
+
+
+
+class _Pacman(_Entity):
+    def __init__(self, start_pos: rl.Vector2) -> None:
+        super().__init__(start_pos, 4.2)
+
+
+class _Pacgum:
+    pos: rl.Vector2
+    def __init__(self, pos: rl.Vector2) -> None:
+        self.pos = pos
 
 
 WALL_THICKNESS: float = 2.0
 MAZE_PADDING: int = 50
 
 
-class MazeRender:
+class _MazeRender:
     maze: list[list[int]]
     maze_height: int
     maze_width: int
@@ -98,36 +148,36 @@ class MazeRender:
                         rl.RED
                     )
 
-    def get_cell_cord(self, entity: Entity) -> tuple[int, int]:
+    def get_cell_cord(self, entity: _Entity) -> tuple[int, int]:
         maze_x = round((entity.pos.x - self.start_x) / self.wall_length)
         maze_y = round((entity.pos.y - self.start_y) / self.wall_length)
         return maze_x, maze_y
 
-    def get_cell(self, entity: Entity) -> int:
+    def get_cell(self, entity: _Entity) -> int:
         maze_x, maze_y = self.get_cell_cord(entity)
         return self.maze[maze_y][maze_x]
 
-    def can_move_to_direction(self, dirct: Direction, entity: Entity) -> bool:
-        if dirct is Direction.NONE:
+    def can_move_to_direction(self, dirct: _Direction, entity: _Entity) -> bool:
+        if dirct is _Direction.NONE:
             return False
         return not (self.get_cell(entity) & dirct.value)
 
-    def is_close_cellcenter(self, entity: Entity) -> bool:
+    def is_close_cellcenter(self, entity: _Entity) -> bool:
         return ((entity.pos.x - self.start_x) / self.wall_length) % 1 < 0.1\
             and ((entity.pos.y - self.start_y) / self.wall_length) % 1 < 0.1
 
-    def move_to_cellcenter(self, entity: Entity) -> None:
+    def move_to_cellcenter(self, entity: _Entity) -> None:
         maze_x, maze_y = self.get_cell_cord(entity)
         entity.pos.x = self.start_x + self.wall_length * maze_x
         entity.pos.y = self.start_y + self.wall_length * maze_y
 
 
 
-class EntityRender:
+class _EntityRender:
     TEXTURE: rl.Texture = rl.load_texture("assets/everything.png")
     MASK_REC_DIMENSION: float = 16 # linked to assets (227px // 16 frame)
 
-    entity: Entity
+    entity: _Entity
 
     max_frames: int
     cur_frame: int
@@ -138,7 +188,7 @@ class EntityRender:
 
     def __init__(
         self,
-        entity: Entity,
+        entity: _Entity,
         max_frames: int,
         src_mask_rec: rl.Rectangle,
         dst_mask_rec: rl.Rectangle
@@ -174,13 +224,13 @@ class EntityRender:
             rl.WHITE
         )
 
-class PacmanRender(EntityRender):
-    maze_rend: MazeRender
+class _PacmanRender(_EntityRender):
+    maze_rend: _MazeRender
 
-    def __init__(self, maze_rend: MazeRender) -> None:
+    def __init__(self, maze_rend: _MazeRender) -> None:
         self.maze_rend = maze_rend
         super().__init__(
-            Pacman(
+            _Pacman(
                 vct := rl.Vector2(maze_rend.start_x, maze_rend.start_y)
             ),
             2,
@@ -191,19 +241,19 @@ class PacmanRender(EntityRender):
     @override
     def draw(self) -> None:
         idx = {
-            Direction.RIGHT: 0, Direction.NONE: 0,
-            Direction.LEFT: 1,
-            Direction.UP: 2,
-            Direction.DOWN: 3,
+            _Direction.RIGHT: 0, _Direction.NONE: 0,
+            _Direction.LEFT: 1,
+            _Direction.UP: 2,
+            _Direction.DOWN: 3,
         }
         self.src_mask_rec.y = idx[self.entity.cur_direction] * self.MASK_REC_DIMENSION
         super().draw()
 
 
-class GhostRender(EntityRender):
-    maze_rend: MazeRender
+class _GhostRender(_EntityRender):
+    maze_rend: _MazeRender
 
-    def __init__(self, maze_rend: MazeRender, ghost: Ghost) -> None:
+    def __init__(self, maze_rend: _MazeRender, ghost: _Ghost) -> None:
         self.maze_rend = maze_rend
         super().__init__(
             ghost,
@@ -215,10 +265,10 @@ class GhostRender(EntityRender):
     @override
     def draw(self) -> None:
         idx = {
-            Direction.RIGHT: 0, Direction.NONE: 0,
-            Direction.LEFT: 1,
-            Direction.UP: 2,
-            Direction.DOWN: 3,
+            _Direction.RIGHT: 0, _Direction.NONE: 0,
+            _Direction.LEFT: 1,
+            _Direction.UP: 2,
+            _Direction.DOWN: 3,
         }
         self.src_mask_rec.x = (idx[self.entity.cur_direction]) * self.MASK_REC_DIMENSION * 2
         if self.cur_frame:
@@ -226,11 +276,11 @@ class GhostRender(EntityRender):
         super().draw()
 
 
-class PacgumRender:
-    def __init__(self, maze_rend: MazeRender) -> None:
-        self.pacgum_map: list[list[Pacgum | None]] = []
-        self.pacgum_set: set[Pacgum] = set()
-        self.maze_rend: MazeRender = maze_rend
+class _PacgumRender:
+    def __init__(self, maze_rend: _MazeRender) -> None:
+        self.pacgum_map: list[list[_Pacgum | None]] = []
+        self.pacgum_set: set[_Pacgum] = set()
+        self.maze_rend: _MazeRender = maze_rend
         self.PACGUM_RADIUS: float = max(maze_rend.wall_length / 20, 1)
         for i, row in enumerate(maze_rend.maze):
             self.pacgum_map.append([])
@@ -238,7 +288,7 @@ class PacgumRender:
                 if cell == 0xf:
                     self.pacgum_map[-1].append(None)
                     continue
-                self.pacgum_map[-1].append(pg := Pacgum(rl.Vector2(
+                self.pacgum_map[-1].append(pg := _Pacgum(rl.Vector2(
                     maze_rend.start_x + maze_rend.wall_length * j + maze_rend.wall_length / 2,
                     maze_rend.start_y + maze_rend.wall_length * i + maze_rend.wall_length / 2
                 )))
@@ -253,7 +303,7 @@ class PacgumRender:
             )
 
 
-    def pacman_collect(self, pacman: Entity) -> int:
+    def pacman_collect(self, pacman: _Entity) -> int:
         maze_x, maze_y = self.maze_rend.get_cell_cord(pacman)
         pg = self.pacgum_map[maze_y][maze_x]
         if pg is None:
@@ -268,83 +318,83 @@ class PacgumRender:
 
 
 class GameLoop:
-    maze_rend: MazeRender
-    pacman_rend: PacmanRender
-    ghosts_rend: list[GhostRender]
-    pacgum_rend: PacgumRender
+    maze_rend: _MazeRender
+    pacman_rend: _PacmanRender
+    ghosts_rend: list[_GhostRender]
+    pacgum_rend: _PacgumRender
 
-    def __init__(self, maze_rend: MazeRender) -> None:
-        self.maze_rend = maze_rend
-        self.pacman_rend = PacmanRender(maze_rend)
+    def __init__(self, maze: list[list[int]]) -> None:
+        self.maze_rend = _MazeRender(maze)
+        self.pacman_rend = _PacmanRender(self.maze_rend)
         self.ghosts_rend = self._create_ghosts()
-        self.pacgum_rend = PacgumRender(maze_rend)
+        self.pacgum_rend = _PacgumRender(self.maze_rend)
 
-    def _create_ghosts(self) -> list[GhostRender]:
+    def _create_ghosts(self) -> list[_GhostRender]:
         ghosttype = [
-            Ghost.GhostType.Blinky, Ghost.GhostType.Pinky,
-            Ghost.GhostType.Inky, Ghost.GhostType.Clyde
+            _Ghost.GhostType.Blinky, _Ghost.GhostType.Pinky,
+            _Ghost.GhostType.Inky, _Ghost.GhostType.Clyde
         ]
         return [
-            GhostRender(
+            _GhostRender(
                 self.maze_rend,
-                Ghost(rl.Vector2(self.maze_rend.start_x, self.maze_rend.start_y), gt),
+                _Ghost(rl.Vector2(self.maze_rend.start_x, self.maze_rend.start_y), gt),
             )
             for gt in ghosttype
         ]
 
 
-    def _move_entity(self, entity: Entity) -> None:
-        if entity.cur_direction is Direction.NONE:
+    def _move_entity(self, entity: _Entity) -> None:
+        if entity.cur_direction is _Direction.NONE:
             entity.cur_direction = entity.nxt_direction
             return
 
         if self.maze_rend.can_move_to_direction(entity.nxt_direction, entity) and entity.nxt_direction is not entity.cur_direction:
             if self.maze_rend.is_close_cellcenter(entity):
                 entity.cur_direction = entity.nxt_direction
-                entity.nxt_direction = Direction.NONE
+                entity.nxt_direction = _Direction.NONE
                 self.maze_rend.move_to_cellcenter(entity)
                 return
         if self.maze_rend.can_move_to_direction(entity.cur_direction, entity):
             to_move = self.maze_rend.wall_length * entity.speed * rl.get_frame_time()
             match entity.cur_direction:
-                case Direction.UP:
+                case _Direction.UP:
                     entity.pos.y -= to_move
-                case Direction.DOWN:
+                case _Direction.DOWN:
                     entity.pos.y += to_move
-                case Direction.LEFT:
+                case _Direction.LEFT:
                     entity.pos.x -= to_move
-                case Direction.RIGHT:
+                case _Direction.RIGHT:
                     entity.pos.x += to_move
         elif not self.maze_rend.is_close_cellcenter(entity):
             to_move = self.maze_rend.wall_length * entity.speed * rl.get_frame_time()
             match entity.cur_direction:
-                case Direction.UP:
+                case _Direction.UP:
                     entity.pos.y -= to_move
-                case Direction.DOWN:
+                case _Direction.DOWN:
                     entity.pos.y += to_move
-                case Direction.LEFT:
+                case _Direction.LEFT:
                     entity.pos.x -= to_move
-                case Direction.RIGHT:
+                case _Direction.RIGHT:
                     entity.pos.x += to_move
         else:
             self.maze_rend.move_to_cellcenter(entity)
 
     def _handle_keyboard(self) -> None:
         if rl.is_key_down(rl.KeyboardKey.KEY_DOWN):
-            self.pacman_rend.entity.nxt_direction = Direction.DOWN
+            self.pacman_rend.entity.nxt_direction = _Direction.DOWN
         elif rl.is_key_down(rl.KeyboardKey.KEY_UP):
-            self.pacman_rend.entity.nxt_direction = Direction.UP
+            self.pacman_rend.entity.nxt_direction = _Direction.UP
         if rl.is_key_down(rl.KeyboardKey.KEY_LEFT):
-            self.pacman_rend.entity.nxt_direction = Direction.LEFT
+            self.pacman_rend.entity.nxt_direction = _Direction.LEFT
         elif rl.is_key_down(rl.KeyboardKey.KEY_RIGHT):
-            self.pacman_rend.entity.nxt_direction = Direction.RIGHT
+            self.pacman_rend.entity.nxt_direction = _Direction.RIGHT
 
-    def _set_ghost_path(self, ghost: Ghost) -> None:
+    def _set_ghost_path(self, ghost: _Ghost) -> None:
         if self.maze_rend.can_move_to_direction(ghost.cur_direction, ghost):
             return
         import random
         walls = self.maze_rend.get_cell(ghost)
-        directions = [Direction.DOWN, Direction.UP, Direction.LEFT, Direction.RIGHT]
+        directions = [_Direction.DOWN, _Direction.UP, _Direction.LEFT, _Direction.RIGHT]
         available = [d for d in directions if not walls & d ]
         ghost.nxt_direction = random.choice(available)
 
@@ -353,7 +403,7 @@ class GameLoop:
         while not rl.window_should_close():
             self._handle_keyboard()
             for g in self.ghosts_rend:
-                assert isinstance(g.entity, Ghost)
+                assert isinstance(g.entity, _Ghost)
                 self._set_ghost_path(g.entity)
                 self._move_entity(g.entity)
             self._move_entity(self.pacman_rend.entity)

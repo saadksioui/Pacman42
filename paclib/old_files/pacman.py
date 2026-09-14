@@ -18,4 +18,4 @@ if config is None:
 choice: str | None = "play"
 
 while choice != "exit":
-    choice = paclib.HomePage.run()
+    choice = paclib.HomePage.start()

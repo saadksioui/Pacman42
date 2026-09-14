@@ -2,12 +2,12 @@ from json import JSONDecodeError
 from json import loads as check_valid_json
 from pydantic import BaseModel, Field, ValidationError # type: ignore
 import random
+import sys
 
 
 class Level(BaseModel):
-    width: int = 300
-    height: int = 300
-    level_max_time: int = 90
+    width: int = 15
+    height: int = 15
 
 
 class Config(BaseModel):
@@ -17,23 +17,23 @@ class Config(BaseModel):
         min_length=10
     )
     lives: int = 3
-    pacgum: int = 42
     points_per_pacgum: int = 10
     points_per_super_pacgum: int = 50
     points_per_ghost: int = 200
     seed: int = random.randint(0, 10**10)
+    level_max_time: int = 90
 
     @classmethod
-    def get_config(cls, file_path: str) -> "Config" | None:
+    def get_config(cls, file_path: str) -> "Config":
         try:
             with open(file_path, "r") as file:
                 return cls._convert_data(file.read())
         except OSError as e:
             print("OSError:", e)
-            return None
+            exit(1)
         except JSONDecodeError:
             print("JSON: unvalid json")
-            return None
+            exit(1)
         except ValidationError:
             print(f"Warning: using default because {file_path} is broken")
             return Config()
@@ -51,7 +51,9 @@ class Config(BaseModel):
         check_valid_json(json_data)
         return cls.model_validate_json(json_data)
 
+if len(sys.argv) != 2:
+    print("The program must be launched from the command", end=" ")
+    print("line as follows:\n`python3 pac-man.py config.json`")
+    exit(1)
 
-if __name__ == "__main__":
-    if Config.get_config("config.json") is None:
-        exit(1)
+CONFIG = Config.get_config(sys.argv[1])
