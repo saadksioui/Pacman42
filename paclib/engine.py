@@ -1,7 +1,9 @@
 import pyray as rl
 from typing import override
+from paclib.config import CONFIG
+from paclib.old_files.classes import Ghost
 from ._gui_init import SCREEN_HEIGHT, SCREEN_WIDTH
-from enum import IntEnum
+from enum import Enum, IntEnum
 
 
 
@@ -32,6 +34,11 @@ class _Entity:
 
 
 class _Ghost(_Entity):
+    class GhostState(Enum):
+        CHASE = "CHASE"
+        FRIGHTENED = "FRIGHTENED"
+        EATEN = "EATEN"
+
     class GhostType(IntEnum):
         Blinky = 4
         Pinky = 5
@@ -39,10 +46,12 @@ class _Ghost(_Entity):
         Clyde = 7
 
     type: GhostType
+    state: GhostState
 
     def __init__(self, start_pos: rl.Vector2, type: GhostType) -> None:
-        super().__init__(start_pos, 7)
+        super().__init__(start_pos, 3)
         self.type = type
+        self.state = _Ghost.GhostState.CHASE
 
 
 
@@ -55,6 +64,9 @@ class _Pacgum:
     pos: rl.Vector2
     def __init__(self, pos: rl.Vector2) -> None:
         self.pos = pos
+
+class _SuperPacgum(_Pacgum):
+    pass
 
 
 WALL_THICKNESS: float = 2.0
@@ -175,7 +187,6 @@ class _MazeRender:
 
 class _EntityRender:
     TEXTURE: rl.Texture = rl.load_texture("assets/everything.png")
-    MASK_REC_DIMENSION: float = 16 # linked to assets (227px // 16 frame)
 
     entity: _Entity
 
@@ -210,9 +221,9 @@ class _EntityRender:
             self.cur_frame += 1
             if self.cur_frame > self.max_frames:
                 self.cur_frame = 0
-                self.src_mask_rec.x -= self.max_frames * self.MASK_REC_DIMENSION
+                self.src_mask_rec.x -= self.max_frames * 16
             else:
-                self.src_mask_rec.x += self.MASK_REC_DIMENSION
+                self.src_mask_rec.x += 16
         self.dst_mask_rec.x = self.entity.pos.x
         self.dst_mask_rec.y = self.entity.pos.y
         rl.draw_texture_pro(
@@ -234,7 +245,7 @@ class _PacmanRender(_EntityRender):
                 vct := rl.Vector2(maze_rend.start_x, maze_rend.start_y)
             ),
             2,
-            rl.Rectangle(0, 0, self.MASK_REC_DIMENSION, self.MASK_REC_DIMENSION),
+            rl.Rectangle(0, 0, 16, 16),
             rl.Rectangle(vct.x, vct.y, maze_rend.wall_length, maze_rend.wall_length)
         )
 
@@ -246,38 +257,73 @@ class _PacmanRender(_EntityRender):
             _Direction.UP: 2,
             _Direction.DOWN: 3,
         }
-        self.src_mask_rec.y = idx[self.entity.cur_direction] * self.MASK_REC_DIMENSION
+        self.src_mask_rec.y = idx[self.entity.cur_direction] * 16
         super().draw()
 
 
 class _GhostRender(_EntityRender):
     maze_rend: _MazeRender
+    ghost: _Ghost
 
     def __init__(self, maze_rend: _MazeRender, ghost: _Ghost) -> None:
         self.maze_rend = maze_rend
         super().__init__(
             ghost,
             1,
-            rl.Rectangle(0, ghost.type.value * self.MASK_REC_DIMENSION, self.MASK_REC_DIMENSION, self.MASK_REC_DIMENSION),
+            rl.Rectangle(0, ghost.type.value * 16, 16, 16),
             rl.Rectangle(ghost.pos.x, ghost.pos.y, maze_rend.wall_length, maze_rend.wall_length)
         )
+        self.ghost = ghost
+        self.frightened_timer: float = 0.0
 
     @override
     def draw(self) -> None:
+        self._cancel_frightened_state()
         idx = {
             _Direction.RIGHT: 0, _Direction.NONE: 0,
             _Direction.LEFT: 1,
             _Direction.UP: 2,
             _Direction.DOWN: 3,
         }
-        self.src_mask_rec.x = (idx[self.entity.cur_direction]) * self.MASK_REC_DIMENSION * 2
-        if self.cur_frame:
-            self.src_mask_rec.x += self.MASK_REC_DIMENSION
+        if self.ghost.state is _Ghost.GhostState.CHASE:
+            self.src_mask_rec.x = (idx[self.entity.cur_direction]) * 16 * 2
+            if self.cur_frame:
+                self.src_mask_rec.x += 16
         super().draw()
+
+    def change_state(self, new_state: _Ghost.GhostState) -> None:
+        match new_state:
+            case _Ghost.GhostState.FRIGHTENED:
+                self.frightened_timer = 0.0
+                self.cur_frame = 0
+                self.src_mask_rec.x = 16 * 8
+                self.src_mask_rec.y = 16 * 4
+                self.max_frames = 3
+            case _Ghost.GhostState.CHASE:
+                self.cur_frame = 0
+                self.max_frames = 2
+                self.src_mask_rec.y = self.ghost.type * 16
+
+        self.ghost.state = new_state
+
+    def _cancel_frightened_state(self) -> None:
+        if self.ghost.state is not _Ghost.GhostState.FRIGHTENED:
+            return
+        self.frightened_timer += rl.get_frame_time()
+        if self.frightened_timer > 7:
+            self.change_state(_Ghost.GhostState.CHASE)
+
+
 
 
 class _PacgumRender:
     def __init__(self, maze_rend: _MazeRender) -> None:
+        def to_spacgum(x: int, y: int) -> None:
+            pg = self.pacgum_map[y][x]
+            assert isinstance(pg, _Pacgum)
+            self.pacgum_set.remove(pg)
+            self.pacgum_map[y][x] = spg = _SuperPacgum(pg.pos)
+            self.pacgum_set.add(spg)
         self.pacgum_map: list[list[_Pacgum | None]] = []
         self.pacgum_set: set[_Pacgum] = set()
         self.maze_rend: _MazeRender = maze_rend
@@ -293,25 +339,45 @@ class _PacgumRender:
                     maze_rend.start_y + maze_rend.wall_length * i + maze_rend.wall_length / 2
                 )))
                 self.pacgum_set.add(pg)
+
+        maze_width = maze_rend.maze_width
+        maze_height = maze_rend.maze_height
+        to_spacgum(2, maze_height - 3)
+        to_spacgum(2, 2)
+        to_spacgum(maze_width - 3, 2)
+        to_spacgum(maze_width - 3, maze_height - 3)
+
+
     def draw(self) -> None:
         for pg in self.pacgum_set:
-            rl.draw_circle(
-                int(pg.pos.x),
-                int(pg.pos.y),
-                self.PACGUM_RADIUS,
-                rl.PURPLE
-            )
+            if isinstance(pg, _SuperPacgum):
+                rl.draw_circle(
+                    int(pg.pos.x),
+                    int(pg.pos.y),
+                    self.PACGUM_RADIUS * 3,
+                    rl.PURPLE
+                )
+            else:
+                rl.draw_circle(
+                    int(pg.pos.x),
+                    int(pg.pos.y),
+                    self.PACGUM_RADIUS,
+                    rl.PURPLE
+                )
 
 
-    def pacman_collect(self, pacman: _Entity) -> int:
+    def pacman_collect(self, pacman: _Entity) -> tuple[bool, int]:
         maze_x, maze_y = self.maze_rend.get_cell_cord(pacman)
         pg = self.pacgum_map[maze_y][maze_x]
         if pg is None:
-            return 0
+            return False, 0
         if self.maze_rend.is_close_cellcenter(pacman):
             self.pacgum_set.remove(pg)
             self.pacgum_map[maze_y][maze_x] = None
-        return 0
+            if isinstance(pg, _SuperPacgum):
+                return True, CONFIG.points_per_super_pacgum
+            return False, CONFIG.points_per_pacgum
+        return False, 0
 
 
 
@@ -322,12 +388,14 @@ class GameLoop:
     pacman_rend: _PacmanRender
     ghosts_rend: list[_GhostRender]
     pacgum_rend: _PacgumRender
+    score: int
 
     def __init__(self, maze: list[list[int]]) -> None:
         self.maze_rend = _MazeRender(maze)
         self.pacman_rend = _PacmanRender(self.maze_rend)
         self.ghosts_rend = self._create_ghosts()
         self.pacgum_rend = _PacgumRender(self.maze_rend)
+        self.score = 0
 
     def _create_ghosts(self) -> list[_GhostRender]:
         ghosttype = [
@@ -407,7 +475,17 @@ class GameLoop:
                 self._set_ghost_path(g.entity)
                 self._move_entity(g.entity)
             self._move_entity(self.pacman_rend.entity)
-            self.pacgum_rend.pacman_collect(self.pacman_rend.entity)
+
+
+            is_super_pacgum, score = self.pacgum_rend.pacman_collect(self.pacman_rend.entity)
+            self.score += score
+            if is_super_pacgum:
+                for gr in self.ghosts_rend:
+                    gr.change_state(_Ghost.GhostState.FRIGHTENED)
+
+
+
+
             rl.begin_drawing()
             rl.clear_background(rl.BLACK)
             self.maze_rend.draw()

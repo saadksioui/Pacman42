@@ -140,11 +140,15 @@ class GamePage:
     @staticmethod
     def draw() -> None:
         levels = CONFIG.levels
-        while not rl.window_should_close() or levels:
+        while not rl.window_should_close() and levels:
             lvl = levels[0]
             levels = levels[1:]
             maze = MazeGenerator(size=(lvl.height, lvl.width), seed=CONFIG.seed).maze
-            GameLoop(maze).run()
+            game = GameLoop(maze)
+            game.run()
+            print(game.score)
+
+
 
 
 ############################################
