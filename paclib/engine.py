@@ -1,18 +1,12 @@
 import pyray as rl
 # from typing import override
 from paclib.config import CONFIG
-from paclib.old_files.classes import Ghost
 from ._gui_init import SCREEN_HEIGHT, SCREEN_WIDTH
 from enum import Enum, IntEnum
 import math
 
 
-class GameState(Enum):
-    PLAYING = "PLAYING"
-    PAUSED = "PAUSED"
-    LEVEL_CLEARED = "LEVEL_CLEARED"
-    CHEAT = "CHEAT"
-    END = "END"
+
 
 class _Direction(IntEnum):
     UP = 0b0001
@@ -290,8 +284,8 @@ class _GhostRender(_EntityRender):
         self.frightened_timer: float = 0.0
 
     # @override
-    def draw(self) -> None:
-        self._cancel_frightened_state()
+    def draw(self, game_paused: bool) -> None:
+        self._cancel_frightened_state(game_paused)
         idx = {
             _Direction.RIGHT: 0, _Direction.NONE: 0,
             _Direction.LEFT: 1,
@@ -332,8 +326,8 @@ class _GhostRender(_EntityRender):
 
         self.ghost.state = new_state
 
-    def _cancel_frightened_state(self) -> None:
-        if self.ghost.state is not _Ghost.GhostState.FRIGHTENED:
+    def _cancel_frightened_state(self, game_paused: bool) -> None:
+        if self.ghost.state is not _Ghost.GhostState.FRIGHTENED or game_paused:
             return
         self.frightened_timer += rl.get_frame_time()
         if 4 < self.frightened_timer < 7:
@@ -408,16 +402,68 @@ class _PacgumRender:
         return False, 0
 
 
+class PauseMenu:
+    options: list[str] = [
+        "Resume",
+        "Main Menu",
+        "Exit"
+    ]
+
+    cur_op: int
+    font_size: int = SCREEN_HEIGHT // 15
+    start_x: int = SCREEN_HEIGHT // 2 - (font_size * len(options) - font_size // 5 * (len(options) - 1)) // 2
+    def __init__(self) -> None:
+        self.cur_op = 0
+
+    def draw(self) -> None:
+        half_screen = SCREEN_WIDTH // 2
+        for i, op in enumerate(self.options):
+
+            text_width = rl.measure_text(op, self.font_size)
+            rl.draw_text(
+                op,
+                half_screen - text_width // 2,
+                self.start_x + (self.font_size + self.font_size // 5) * i,
+                self.font_size,
+                rl.YELLOW if i == self.cur_op else rl.WHITE
+            )
+
+
+    def handle_keyboard(self) -> str | None:
+        if rl.is_key_pressed(rl.KeyboardKey.KEY_DOWN):
+            self.cur_op += 1
+            if self.cur_op >= len(self.options):
+                self.cur_op = 0
+        elif rl.is_key_pressed(rl.KeyboardKey.KEY_UP):
+            self.cur_op -= 1
+            if self.cur_op < 0:
+                self.cur_op = len(self.options) - 1
+
+        elif rl.is_key_pressed(rl.KeyboardKey.KEY_ENTER):
+            option = self.options[self.cur_op].lower()
+            match option:
+                case "exit":
+                    rl.close_window()
+                case _:
+                    return option
+
 
 
 
 class GameLoop:
+    class GameState(Enum):
+        PLAYING = "PLAYING"
+        PAUSED = "PAUSED"
+        LEVEL_CLEARED = "LEVEL_CLEARED"
+        CHEAT = "CHEAT"
+        END = "END"
+
     maze_rend: _MazeRender
     pacman_rend: _PacmanRender
     ghosts_rend: list[_GhostRender]
     pacgum_rend: _PacgumRender
     score: int
-    lives: int
+    state: GameState
 
     def __init__(self, maze: list[list[int]], lives: int) -> None:
         self.maze_rend = _MazeRender(maze)
@@ -425,7 +471,7 @@ class GameLoop:
         self.ghosts_rend = self._create_ghosts()
         self.pacgum_rend = _PacgumRender(self.maze_rend)
         self.score = 0
-        self.state = GameState.PLAYING
+        self.state = self.GameState.PLAYING
 
     def _create_ghosts(self) -> list[_GhostRender]:
         max_x = self.maze_rend.maze_width - 1
@@ -458,6 +504,9 @@ class GameLoop:
 
 
     def _move_entity(self, entity: _Entity) -> None:
+        if self.state is self.GameState.PAUSED:
+            return
+
         if entity.cur_direction is _Direction.NONE:
             entity.cur_direction = entity.nxt_direction
             return
@@ -494,6 +543,8 @@ class GameLoop:
             self.maze_rend.move_to_cellcenter(entity)
 
     def _handle_keyboard(self) -> None:
+        if self.state is self.GameState.PAUSED:
+            return
         if rl.is_key_down(rl.KeyboardKey.KEY_DOWN):
             self.pacman_rend.entity.nxt_direction = _Direction.DOWN
         elif rl.is_key_down(rl.KeyboardKey.KEY_UP):
@@ -513,61 +564,63 @@ class GameLoop:
         ghost.nxt_direction = random.choice(available)
 
     def _check_entity_collision(self):
-        for ghost in self.ghosts_rend:
-            distance = rl.vector2_distance(ghost.ghost.pos, self.pacman_rend.entity.pos)
+        for gr in self.ghosts_rend:
+            distance = rl.vector2_distance(gr.ghost.pos, self.pacman_rend.entity.pos)
             if distance <= self.maze_rend.wall_length * 0.5:
-                if ghost.ghost.state == ghost.ghost.GhostState.CHASE:
+                if gr.ghost.state == gr.ghost.GhostState.CHASE:
                     self.pacman_rend.lives -= 1
                     if self.pacman_rend.lives <= 0:
                         exit(0)
                     self.pacman_rend.entity.pos = rl.Vector2(self.maze_rend.start_x, self.maze_rend.start_y)
-                elif ghost.ghost.state == ghost.ghost.GhostState.FRIGHTENED:
-                    ghost.change_state(ghost.ghost.GhostState.EATEN)
+                elif gr.ghost.state == gr.ghost.GhostState.FRIGHTENED:
+                    gr.change_state(gr.ghost.GhostState.EATEN)
                     self.score += CONFIG.points_per_ghost
 
 
     def run(self) -> None:
+        pause_menu: PauseMenu = PauseMenu()
         while not rl.window_should_close():
-            if self.state == GameState.PLAYING:
-                if rl.is_key_pressed(rl.KeyboardKey.KEY_SPACE):
-                    self.state = GameState.PAUSED
-                elif rl.is_key_pressed(rl.KeyboardKey.KEY_C):
-                    self.state = GameState.CHEAT
-                self._handle_keyboard()
-                for g in self.ghosts_rend:
-                    assert isinstance(g.entity, _Ghost)
-                    self._set_ghost_path(g.entity)
-                    self._move_entity(g.entity)
-                self._move_entity(self.pacman_rend.entity)
-                self._check_entity_collision()
+            if rl.is_key_pressed(rl.KeyboardKey.KEY_SPACE):
+                if self.state is self.GameState.PLAYING:
+                    self.state = self.GameState.PAUSED
+                    pause_menu = PauseMenu()
+                else:
+                    self.state = self.GameState.PLAYING
+            if self.state is self.GameState.PAUSED:
+                match pause_menu.handle_keyboard():
+                    case "main menu":
+                        return
+                    case "resume":
+                        self.state = self.GameState.PLAYING
 
-                is_super_pacgum, score = self.pacgum_rend.pacman_collect(self.pacman_rend.entity)
-                self.score += score
-                if is_super_pacgum:
-                    for gr in self.ghosts_rend:
-                        gr.change_state(_Ghost.GhostState.FRIGHTENED)
-                rl.begin_drawing()
-                rl.clear_background(rl.BLACK)
-                self.maze_rend.draw()
-                self.pacgum_rend.draw()
-                for g in self.ghosts_rend:
-                    g.draw()
-                self.pacman_rend.draw()
-                rl.draw_text(f"Score: {self.score}", 7, 7, 25, rl.WHITE)
-                rl.draw_text(str(rl.get_fps()), 7, 47, 25, rl.WHITE)
-                rl.draw_text("Pause: P", 7, 87, 25, rl.WHITE)
-                rl.draw_text("Cheat Mode: C", 7, 127, 25, rl.WHITE)
-                rl.end_drawing()
-            elif self.state == GameState.PAUSED:
-                rl.begin_drawing()
-                rl.clear_background(rl.BLACK)
-                if rl.is_key_pressed(rl.KeyboardKey.KEY_SPACE):
-                    self.state = GameState.PLAYING
-                rl.draw_text("Pause", 7, 7, 25, rl.WHITE)
-                rl.end_drawing()
-            elif self.state == GameState.CHEAT:
-                pass
-            elif self.state == GameState.END:
-                from paclib.menus import SaveScorePage
-                save_score = SaveScorePage(self.score)
-                save_score.draw()
+            self._handle_keyboard()
+            for g in self.ghosts_rend:
+                self._set_ghost_path(g.ghost)
+                self._move_entity(g.entity)
+            self._move_entity(self.pacman_rend.entity)
+            self._check_entity_collision()
+
+            is_super_pacgum, score = self.pacgum_rend.pacman_collect(self.pacman_rend.entity)
+            self.score += score
+            if is_super_pacgum:
+                for gr in self.ghosts_rend:
+                    gr.change_state(_Ghost.GhostState.FRIGHTENED)
+
+            rl.begin_drawing()
+
+            rl.clear_background(rl.BLACK)
+            self.maze_rend.draw()
+            self.pacgum_rend.draw()
+            for g in self.ghosts_rend:
+                g.draw(self.state is self.GameState.PAUSED)
+            self.pacman_rend.draw()
+            rl.draw_text(f"Score: {self.score}", 7, 7, 25, rl.WHITE)
+            rl.draw_text(str(rl.get_fps()), 7, 47, 25, rl.WHITE)
+            rl.draw_text("Pause: P", 7, 87, 25, rl.WHITE)
+            rl.draw_text("Cheat Mode: C", 7, 127, 25, rl.WHITE)
+
+            if self.state is self.GameState.PAUSED:
+                rl.draw_rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (0, 0, 0, 0xde))
+                pause_menu.draw()
+
+            rl.end_drawing()
