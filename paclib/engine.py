@@ -24,6 +24,7 @@ class _Direction(IntEnum):
 PACMAN_SPEED: float = 4.2
 CHASE_GHOST_SPEED: float = 3.0
 FRIGHTENED_GHOST_SPEED: float = 2.0
+EATEN_GHOST_SPEED: float = 6.2
 
 class _Entity:
     pos: rl.Vector2
@@ -301,22 +302,33 @@ class _GhostRender(_EntityRender):
             self.src_mask_rec.x = (idx[self.entity.cur_direction]) * 16 * 2
             if self.cur_frame:
                 self.src_mask_rec.x += 16
+        if self.ghost.state is _Ghost.GhostState.EATEN:
+            self.src_mask_rec.x = 16 * 8 + (idx[self.entity.cur_direction]) * 16
         super().draw()
 
     def change_state(self, new_state: _Ghost.GhostState) -> None:
+        self.cur_frame = 0
         match new_state:
             case _Ghost.GhostState.FRIGHTENED:
+                # avoid changing the state of dead ghosts to frightened.
+                if self.ghost.state is _Ghost.GhostState.EATEN:
+                    return
+
                 self.frightened_timer = 0.0
-                self.cur_frame = 0
                 self.src_mask_rec.x = 16 * 8
                 self.src_mask_rec.y = 16 * 4
                 self.max_frames = 1
                 self.ghost.speed = FRIGHTENED_GHOST_SPEED
             case _Ghost.GhostState.CHASE:
-                self.cur_frame = 0
                 self.max_frames = 1
                 self.src_mask_rec.y = self.ghost.type * 16
                 self.ghost.speed = CHASE_GHOST_SPEED
+
+            case _Ghost.GhostState.EATEN:
+                self.max_frames = 0
+                self.src_mask_rec.y = 5 * 16
+                self.src_mask_rec.x = 8 * 16
+                self.ghost.speed = EATEN_GHOST_SPEED
 
         self.ghost.state = new_state
 
@@ -418,30 +430,30 @@ class GameLoop:
     def _create_ghosts(self) -> list[_GhostRender]:
         max_x = self.maze_rend.maze_width - 1
         max_y = self.maze_rend.maze_height - 1
-        
+
         spawn_tiles = [
             (max_x, 1),
             (max_x, 1),
             (1, max_y),
             (max_x, max_y)
         ]
-        
+
         ghosttype = [
             _Ghost.GhostType.Blinky, _Ghost.GhostType.Pinky,
             _Ghost.GhostType.Inky, _Ghost.GhostType.Clyde
         ]
-        
-        ghosts = []
+
+        ghosts:list[_GhostRender] = []
         for i, gt in enumerate(ghosttype):
             grid_x, grid_y = spawn_tiles[i]
-            
+
             pixel_x = self.maze_rend.start_x + (grid_x * self.maze_rend.wall_length)
             pixel_y = self.maze_rend.start_y + (grid_y * self.maze_rend.wall_length)
             start_pos = rl.Vector2(pixel_x, pixel_y)
             ghosts.append(
                 _GhostRender(self.maze_rend, _Ghost(start_pos, gt))
             )
-            
+
         return ghosts
 
 
@@ -502,25 +514,22 @@ class GameLoop:
 
     def _check_entity_collision(self):
         for ghost in self.ghosts_rend:
-            pac_x, pac_y = self.pacman_rend.entity.pos.x, self.pacman_rend.entity.pos.y
-            ghost_x, ghost_y = ghost.entity.pos.x, ghost.entity.pos.y
-            distance = math.sqrt(((ghost_x - pac_x)**2 + (ghost_y - pac_y)**2))
-            if distance <= self.maze_rend.wall_length * 0.7:
+            distance = rl.vector2_distance(ghost.ghost.pos, self.pacman_rend.entity.pos)
+            if distance <= self.maze_rend.wall_length * 0.5:
                 if ghost.ghost.state == ghost.ghost.GhostState.CHASE:
                     self.pacman_rend.lives -= 1
                     if self.pacman_rend.lives <= 0:
                         exit(0)
                     self.pacman_rend.entity.pos = rl.Vector2(self.maze_rend.start_x, self.maze_rend.start_y)
-                    self._create_ghosts()
                 elif ghost.ghost.state == ghost.ghost.GhostState.FRIGHTENED:
                     ghost.change_state(ghost.ghost.GhostState.EATEN)
-                    self.score += 500
+                    self.score += CONFIG.points_per_ghost
 
 
     def run(self) -> None:
         while not rl.window_should_close():
             if self.state == GameState.PLAYING:
-                if rl.is_key_pressed(rl.KeyboardKey.KEY_P):
+                if rl.is_key_pressed(rl.KeyboardKey.KEY_SPACE):
                     self.state = GameState.PAUSED
                 elif rl.is_key_pressed(rl.KeyboardKey.KEY_C):
                     self.state = GameState.CHEAT
@@ -531,7 +540,7 @@ class GameLoop:
                     self._move_entity(g.entity)
                 self._move_entity(self.pacman_rend.entity)
                 self._check_entity_collision()
-    
+
                 is_super_pacgum, score = self.pacgum_rend.pacman_collect(self.pacman_rend.entity)
                 self.score += score
                 if is_super_pacgum:
@@ -552,7 +561,7 @@ class GameLoop:
             elif self.state == GameState.PAUSED:
                 rl.begin_drawing()
                 rl.clear_background(rl.BLACK)
-                if rl.is_key_pressed(rl.KeyboardKey.KEY_P):
+                if rl.is_key_pressed(rl.KeyboardKey.KEY_SPACE):
                     self.state = GameState.PLAYING
                 rl.draw_text("Pause", 7, 7, 25, rl.WHITE)
                 rl.end_drawing()
