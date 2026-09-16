@@ -11,6 +11,7 @@ class GameState(Enum):
     PLAYING = "PLAYING"
     PAUSED = "PAUSED"
     LEVEL_CLEARED = "LEVEL_CLEARED"
+    CHEAT = "CHEAT"
     END = "END"
 
 class _Direction(IntEnum):
@@ -412,11 +413,11 @@ class GameLoop:
         self.ghosts_rend = self._create_ghosts()
         self.pacgum_rend = _PacgumRender(self.maze_rend)
         self.score = 0
-        self.state = GameState.END
+        self.state = GameState.PLAYING
 
     def _create_ghosts(self) -> list[_GhostRender]:
-        max_x = self.maze_rend.maze_width - 2
-        max_y = self.maze_rend.maze_height - 2
+        max_x = self.maze_rend.maze_width - 1
+        max_y = self.maze_rend.maze_height - 1
         
         spawn_tiles = [
             (max_x, 1),
@@ -510,6 +511,7 @@ class GameLoop:
                     if self.pacman_rend.lives <= 0:
                         exit(0)
                     self.pacman_rend.entity.pos = rl.Vector2(self.maze_rend.start_x, self.maze_rend.start_y)
+                    self._create_ghosts()
                 elif ghost.ghost.state == ghost.ghost.GhostState.FRIGHTENED:
                     ghost.change_state(ghost.ghost.GhostState.EATEN)
                     self.score += 500
@@ -520,6 +522,8 @@ class GameLoop:
             if self.state == GameState.PLAYING:
                 if rl.is_key_pressed(rl.KeyboardKey.KEY_P):
                     self.state = GameState.PAUSED
+                elif rl.is_key_pressed(rl.KeyboardKey.KEY_C):
+                    self.state = GameState.CHEAT
                 self._handle_keyboard()
                 for g in self.ghosts_rend:
                     assert isinstance(g.entity, _Ghost)
@@ -540,7 +544,10 @@ class GameLoop:
                 for g in self.ghosts_rend:
                     g.draw()
                 self.pacman_rend.draw()
-                rl.draw_text(str(rl.get_fps()), 7, 7, 25, rl.WHITE)
+                rl.draw_text(f"Score: {self.score}", 7, 7, 25, rl.WHITE)
+                rl.draw_text(str(rl.get_fps()), 7, 47, 25, rl.WHITE)
+                rl.draw_text("Pause: P", 7, 87, 25, rl.WHITE)
+                rl.draw_text("Cheat Mode: C", 7, 127, 25, rl.WHITE)
                 rl.end_drawing()
             elif self.state == GameState.PAUSED:
                 rl.begin_drawing()
@@ -549,6 +556,8 @@ class GameLoop:
                     self.state = GameState.PLAYING
                 rl.draw_text("Pause", 7, 7, 25, rl.WHITE)
                 rl.end_drawing()
+            elif self.state == GameState.CHEAT:
+                pass
             elif self.state == GameState.END:
                 from paclib.menus import SaveScorePage
                 save_score = SaveScorePage(self.score)
