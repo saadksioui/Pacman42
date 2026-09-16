@@ -1,11 +1,17 @@
 import pyray as rl
-from typing import override
+# from typing import override
 from paclib.config import CONFIG
 from paclib.old_files.classes import Ghost
 from ._gui_init import SCREEN_HEIGHT, SCREEN_WIDTH
 from enum import Enum, IntEnum
+import math
 
 
+class GameState(Enum):
+    PLAYING = "PLAYING"
+    PAUSED = "PAUSED"
+    LEVEL_CLEARED = "LEVEL_CLEARED"
+    END = "END"
 
 class _Direction(IntEnum):
     UP = 0b0001
@@ -240,9 +246,11 @@ class _EntityRender:
 
 class _PacmanRender(_EntityRender):
     maze_rend: _MazeRender
+    lives: int
 
-    def __init__(self, maze_rend: _MazeRender) -> None:
+    def __init__(self, maze_rend: _MazeRender, lives: int) -> None:
         self.maze_rend = maze_rend
+        self.lives = lives
         super().__init__(
             _Pacman(
                 vct := rl.Vector2(maze_rend.start_x, maze_rend.start_y)
@@ -252,7 +260,7 @@ class _PacmanRender(_EntityRender):
             rl.Rectangle(vct.x, vct.y, maze_rend.wall_length, maze_rend.wall_length)
         )
 
-    @override
+    # @override
     def draw(self) -> None:
         idx = {
             _Direction.RIGHT: 0, _Direction.NONE: 0,
@@ -279,7 +287,7 @@ class _GhostRender(_EntityRender):
         self.ghost = ghost
         self.frightened_timer: float = 0.0
 
-    @override
+    # @override
     def draw(self) -> None:
         self._cancel_frightened_state()
         idx = {
@@ -396,26 +404,44 @@ class GameLoop:
     ghosts_rend: list[_GhostRender]
     pacgum_rend: _PacgumRender
     score: int
+    lives: int
 
-    def __init__(self, maze: list[list[int]]) -> None:
+    def __init__(self, maze: list[list[int]], lives: int) -> None:
         self.maze_rend = _MazeRender(maze)
-        self.pacman_rend = _PacmanRender(self.maze_rend)
+        self.pacman_rend = _PacmanRender(self.maze_rend, lives)
         self.ghosts_rend = self._create_ghosts()
         self.pacgum_rend = _PacgumRender(self.maze_rend)
         self.score = 0
+        self.state = GameState.END
 
     def _create_ghosts(self) -> list[_GhostRender]:
+        max_x = self.maze_rend.maze_width - 2
+        max_y = self.maze_rend.maze_height - 2
+        
+        spawn_tiles = [
+            (max_x, 1),
+            (max_x, 1),
+            (1, max_y),
+            (max_x, max_y)
+        ]
+        
         ghosttype = [
             _Ghost.GhostType.Blinky, _Ghost.GhostType.Pinky,
             _Ghost.GhostType.Inky, _Ghost.GhostType.Clyde
         ]
-        return [
-            _GhostRender(
-                self.maze_rend,
-                _Ghost(rl.Vector2(self.maze_rend.start_x, self.maze_rend.start_y), gt),
+        
+        ghosts = []
+        for i, gt in enumerate(ghosttype):
+            grid_x, grid_y = spawn_tiles[i]
+            
+            pixel_x = self.maze_rend.start_x + (grid_x * self.maze_rend.wall_length)
+            pixel_y = self.maze_rend.start_y + (grid_y * self.maze_rend.wall_length)
+            start_pos = rl.Vector2(pixel_x, pixel_y)
+            ghosts.append(
+                _GhostRender(self.maze_rend, _Ghost(start_pos, gt))
             )
-            for gt in ghosttype
-        ]
+            
+        return ghosts
 
 
     def _move_entity(self, entity: _Entity) -> None:
@@ -473,32 +499,57 @@ class GameLoop:
         available = [d for d in directions if not walls & d ]
         ghost.nxt_direction = random.choice(available)
 
+    def _check_entity_collision(self):
+        for ghost in self.ghosts_rend:
+            pac_x, pac_y = self.pacman_rend.entity.pos.x, self.pacman_rend.entity.pos.y
+            ghost_x, ghost_y = ghost.entity.pos.x, ghost.entity.pos.y
+            distance = math.sqrt(((ghost_x - pac_x)**2 + (ghost_y - pac_y)**2))
+            if distance <= self.maze_rend.wall_length * 0.7:
+                if ghost.ghost.state == ghost.ghost.GhostState.CHASE:
+                    self.pacman_rend.lives -= 1
+                    if self.pacman_rend.lives <= 0:
+                        exit(0)
+                    self.pacman_rend.entity.pos = rl.Vector2(self.maze_rend.start_x, self.maze_rend.start_y)
+                elif ghost.ghost.state == ghost.ghost.GhostState.FRIGHTENED:
+                    ghost.change_state(ghost.ghost.GhostState.EATEN)
+                    self.score += 500
+
 
     def run(self) -> None:
         while not rl.window_should_close():
-            self._handle_keyboard()
-            for g in self.ghosts_rend:
-                assert isinstance(g.entity, _Ghost)
-                self._set_ghost_path(g.entity)
-                self._move_entity(g.entity)
-            self._move_entity(self.pacman_rend.entity)
-
-
-            is_super_pacgum, score = self.pacgum_rend.pacman_collect(self.pacman_rend.entity)
-            self.score += score
-            if is_super_pacgum:
-                for gr in self.ghosts_rend:
-                    gr.change_state(_Ghost.GhostState.FRIGHTENED)
-
-
-
-
-            rl.begin_drawing()
-            rl.clear_background(rl.BLACK)
-            self.maze_rend.draw()
-            self.pacgum_rend.draw()
-            for g in self.ghosts_rend:
-                g.draw()
-            self.pacman_rend.draw()
-            rl.draw_text(str(rl.get_fps()), 7, 7, 25, rl.WHITE)
-            rl.end_drawing()
+            if self.state == GameState.PLAYING:
+                if rl.is_key_pressed(rl.KeyboardKey.KEY_P):
+                    self.state = GameState.PAUSED
+                self._handle_keyboard()
+                for g in self.ghosts_rend:
+                    assert isinstance(g.entity, _Ghost)
+                    self._set_ghost_path(g.entity)
+                    self._move_entity(g.entity)
+                self._move_entity(self.pacman_rend.entity)
+                self._check_entity_collision()
+    
+                is_super_pacgum, score = self.pacgum_rend.pacman_collect(self.pacman_rend.entity)
+                self.score += score
+                if is_super_pacgum:
+                    for gr in self.ghosts_rend:
+                        gr.change_state(_Ghost.GhostState.FRIGHTENED)
+                rl.begin_drawing()
+                rl.clear_background(rl.BLACK)
+                self.maze_rend.draw()
+                self.pacgum_rend.draw()
+                for g in self.ghosts_rend:
+                    g.draw()
+                self.pacman_rend.draw()
+                rl.draw_text(str(rl.get_fps()), 7, 7, 25, rl.WHITE)
+                rl.end_drawing()
+            elif self.state == GameState.PAUSED:
+                rl.begin_drawing()
+                rl.clear_background(rl.BLACK)
+                if rl.is_key_pressed(rl.KeyboardKey.KEY_P):
+                    self.state = GameState.PLAYING
+                rl.draw_text("Pause", 7, 7, 25, rl.WHITE)
+                rl.end_drawing()
+            elif self.state == GameState.END:
+                from paclib.menus import SaveScorePage
+                save_score = SaveScorePage(self.score)
+                save_score.draw()

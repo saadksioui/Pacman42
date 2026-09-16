@@ -144,7 +144,7 @@ class GamePage:
             lvl = levels[0]
             levels = levels[1:]
             maze = MazeGenerator(size=(lvl.height, lvl.width), seed=CONFIG.seed).maze
-            game = GameLoop(maze)
+            game = GameLoop(maze, CONFIG.lives)
             game.run()
             print(game.score)
 
