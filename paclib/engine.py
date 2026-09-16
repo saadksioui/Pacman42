@@ -190,8 +190,8 @@ class _MazeRender:
 
 
 
+TEXTURE: rl.Texture = rl.load_texture("assets/everything.png")
 class _EntityRender:
-    TEXTURE: rl.Texture = rl.load_texture("assets/everything.png")
 
     entity: _Entity
 
@@ -232,7 +232,7 @@ class _EntityRender:
         self.dst_mask_rec.x = self.entity.pos.x
         self.dst_mask_rec.y = self.entity.pos.y
         rl.draw_texture_pro(
-            self.TEXTURE,
+            TEXTURE,
             self.src_mask_rec,
             self.dst_mask_rec,
             (0, 0),
@@ -449,6 +449,22 @@ class PauseMenu:
 
 
 
+class _PacmanLives:
+
+
+    @staticmethod
+    def draw(lives: int) -> None:
+        dst = rl.Rectangle(10, SCREEN_HEIGHT - MAZE_PADDING, MAZE_PADDING, MAZE_PADDING)
+        src = rl.Rectangle(16,0,16,16)
+        for i in range(lives):
+            dst.x = 10 + MAZE_PADDING * i
+            rl.draw_texture_pro(
+                TEXTURE,
+                src,
+                dst,
+                (0, 0), 0.0, rl.WHITE
+            )
+
 
 class GameLoop:
     class GameState(Enum):
@@ -609,6 +625,7 @@ class GameLoop:
             rl.begin_drawing()
 
             rl.clear_background(rl.BLACK)
+            _PacmanLives.draw(self.pacman_rend.lives)
             self.maze_rend.draw()
             self.pacgum_rend.draw()
             for g in self.ghosts_rend:
