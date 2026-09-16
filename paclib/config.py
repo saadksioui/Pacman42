@@ -16,7 +16,7 @@ class Config(BaseModel):
         default=[Level() for _ in range(10)],
         min_length=10
     )
-    lives: int = 3
+    lives: int = Field(default=3, gt=0)
     points_per_pacgum: int = 10
     points_per_super_pacgum: int = 50
     points_per_ghost: int = 200
