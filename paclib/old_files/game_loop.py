@@ -183,6 +183,7 @@ class Game:
                 and nxt != ghost.prev_pos
             ):
                 neighbors.append(nxt)
+
         def bfs_distance(start_pos):
             queue = deque([start_pos])
             distance = {start_pos: 0}
@@ -369,7 +370,7 @@ class Game:
                             self._fleeing(ghost)
                         elif ghost.state == ghost.State.EATEN:
                             self._eaten(ghost)
-                        
+
                     ghost_timer = 0.0
 
                 self._collisions()

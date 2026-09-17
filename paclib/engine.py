@@ -1,9 +1,8 @@
 import pyray as rl
-# from typing import override
 from paclib.config import CONFIG
 from ._gui_init import SCREEN_HEIGHT, SCREEN_WIDTH
 from enum import Enum, IntEnum
-import math
+from collections import deque
 
 
 
@@ -247,16 +246,19 @@ class _PacmanRender(_EntityRender):
     def __init__(self, maze_rend: _MazeRender, lives: int) -> None:
         self.maze_rend = maze_rend
         self.lives = lives
+        mid_x = maze_rend.maze_width // 2
+        mid_y = maze_rend.maze_height // 2
+        pixel_x = maze_rend.start_x + (mid_x * maze_rend.wall_length)
+        pixel_y = maze_rend.start_y + (mid_y * maze_rend.wall_length)
         super().__init__(
             _Pacman(
-                vct := rl.Vector2(maze_rend.start_x, maze_rend.start_y)
+                vct := rl.Vector2(pixel_x, pixel_y)
             ),
             2,
             rl.Rectangle(0, 0, 16, 16),
             rl.Rectangle(vct.x, vct.y, maze_rend.wall_length, maze_rend.wall_length)
         )
 
-    # @override
     def draw(self) -> None:
         idx = {
             _Direction.RIGHT: 0, _Direction.NONE: 0,
@@ -283,7 +285,7 @@ class _GhostRender(_EntityRender):
         self.ghost = ghost
         self.frightened_timer: float = 0.0
 
-    # @override
+
     def draw(self, game_paused: bool) -> None:
         self._cancel_frightened_state(game_paused)
         idx = {
@@ -470,9 +472,7 @@ class GameLoop:
     class GameState(Enum):
         PLAYING = "PLAYING"
         PAUSED = "PAUSED"
-        LEVEL_CLEARED = "LEVEL_CLEARED"
-        CHEAT = "CHEAT"
-        END = "END"
+
 
     maze_rend: _MazeRender
     pacman_rend: _PacmanRender
@@ -480,6 +480,7 @@ class GameLoop:
     pacgum_rend: _PacgumRender
     score: int
     state: GameState
+    
 
     def __init__(self, maze: list[list[int]], lives: int) -> None:
         self.maze_rend = _MazeRender(maze)
@@ -494,7 +495,7 @@ class GameLoop:
         max_y = self.maze_rend.maze_height - 1
 
         spawn_tiles = [
-            (max_x, 1),
+            (1, 1),
             (max_x, 1),
             (1, max_y),
             (max_x, max_y)
@@ -518,7 +519,106 @@ class GameLoop:
 
         return ghosts
 
+    def __get_target(self, ghost: _Ghost, blinky_pos: tuple[int, int] | None) -> tuple[int, int]:
+        px, py = self.maze_rend.get_cell_cord(self.pacman_rend.entity)
+        dx, dy = 0, 0
+        if self.pacman_rend.entity.cur_direction == _Direction.UP: 
+            dy = -1
+        elif self.pacman_rend.entity.cur_direction == _Direction.DOWN: 
+            dy = 1
+        elif self.pacman_rend.entity.cur_direction == _Direction.LEFT:
+            dx = -1
+        elif self.pacman_rend.entity.cur_direction == _Direction.RIGHT:
+            dx = 1
 
+        match ghost.type:
+            case _Ghost.GhostType.Blinky:
+                return (px, py)
+            case _Ghost.GhostType.Pinky:
+                return (px + (dx * 4), py + (dy * 4))
+            case _Ghost.GhostType.Inky:
+                if not blinky_pos:
+                    return (px, py)
+                pivot_x = px + (dx * 2)
+                pivot_y = py + (dy * 2)
+                vec_x = pivot_x - blinky_pos[0]
+                vec_y = pivot_y - blinky_pos[1]
+                return (blinky_pos[0] + (vec_x * 2), blinky_pos[1] + (vec_y * 2))
+            case _Ghost.GhostType.Clyde:
+                gh_x, gh_y = self.maze_rend.get_cell_cord(ghost)
+                dist = abs(px - gh_x) + abs(py - gh_y)
+                if dist > 8:
+                    return (px, py)
+                return (gh_x, gh_y)
+
+    def _run_bfs(self, start: tuple[int, int], target: tuple[int, int], curr_direction: _Direction):
+        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+        if start == target:
+            return None
+        opp_directions = {
+            _Direction.UP: _Direction.DOWN,
+            _Direction.DOWN: _Direction.UP,
+            _Direction.RIGHT: _Direction.LEFT,
+            _Direction.LEFT: _Direction.RIGHT,
+        }
+        if curr_direction == _Direction.NONE:
+            opp_turn_pos = None
+        else:
+            sx, sy = start
+            match opp_directions[curr_direction]:
+                case _Direction.DOWN:
+                    sy += 1
+                case _Direction.UP:
+                    sy -= 1
+                case _Direction.LEFT:
+                    sx -= 1
+                case _Direction.RIGHT:
+                    sx += 1
+            opp_turn_pos = (sx, sy)
+        queue = deque([start])
+        parent: dict[tuple[int, int], tuple[int, int] | None] = {start: None}
+
+        found = False
+        while queue:
+            curr = queue.popleft()
+            if curr == target:
+                found = True
+                break
+
+            for dx, dy in directions:
+                nxt = (curr[0] + dx, curr[1] + dy)
+                if (
+                    0 <= nxt[0] < self.maze_rend.maze_width
+                    and 0 <= nxt[1] < self.maze_rend.maze_height
+                    and nxt != opp_turn_pos
+                ):
+                    curr_cell = self.maze_rend.maze[curr[1]][curr[0]]
+                    path_is_open = False
+                    if dx == 1 and not (curr_cell & _Direction.RIGHT.value):
+                        path_is_open = True
+                    elif dx == -1 and not (curr_cell & _Direction.LEFT.value):
+                        path_is_open = True
+                    elif dy == 1 and not (curr_cell & _Direction.DOWN.value):
+                        path_is_open = True
+                    elif dy == -1 and not (curr_cell & _Direction.UP.value):
+                        path_is_open = True
+                    if path_is_open and nxt not in parent:
+                        parent[nxt] = curr
+                        queue.append(nxt)
+
+        if target not in parent:
+            return
+        if found:
+            path = []
+            curr = target
+            while curr is not None:
+                path.append(curr)
+                curr = parent[curr]
+            path.reverse()
+
+            if len(path) > 1:
+                return path[1]
+    
     def _move_entity(self, entity: _Entity) -> None:
         if self.state is self.GameState.PAUSED:
             return
@@ -571,13 +671,43 @@ class GameLoop:
             self.pacman_rend.entity.nxt_direction = _Direction.RIGHT
 
     def _set_ghost_path(self, ghost: _Ghost) -> None:
-        if self.maze_rend.can_move_to_direction(ghost.cur_direction, ghost):
+        if not self.maze_rend.is_close_cellcenter(ghost):
             return
-        import random
-        walls = self.maze_rend.get_cell(ghost)
-        directions = [_Direction.DOWN, _Direction.UP, _Direction.LEFT, _Direction.RIGHT]
-        available = [d for d in directions if not walls & d ]
-        ghost.nxt_direction = random.choice(available)
+
+        curr_x, curr_y = self.maze_rend.get_cell_cord(ghost)
+        start = (curr_x, curr_y)
+        blinky = next((g for g in self.ghosts_rend if g.ghost.type == _Ghost.GhostType.Blinky), None)
+        blinky_pos = self.maze_rend.get_cell_cord(blinky.ghost) if blinky else None
+
+        target: tuple[int, int] | None = None
+        if ghost.state == ghost.GhostState.CHASE:
+            target = self.__get_target(ghost, blinky_pos)
+        elif ghost.state == ghost.GhostState.FRIGHTENED:
+            target = (0, 0)
+        elif ghost.state == ghost.GhostState.EATEN:
+            target = (0, 0)
+
+        if target is None:
+            return
+
+        next_step = self._run_bfs(start, target, ghost.cur_direction)
+        if next_step is None:
+            return
+        dx = next_step[0] - curr_x
+        dy = next_step[1] - curr_y
+        if dx == 1:
+            ghost.nxt_direction = _Direction.RIGHT
+        elif dx == -1:
+            ghost.nxt_direction = _Direction.LEFT
+        elif dy == 1:
+            ghost.nxt_direction = _Direction.DOWN
+        elif dy == -1:
+            ghost.nxt_direction = _Direction.UP
+        # import random
+        # walls = self.maze_rend.get_cell(ghost)
+        # directions = [_Direction.DOWN, _Direction.UP, _Direction.LEFT, _Direction.RIGHT]
+        # available = [d for d in directions if not walls & d ]
+        # ghost.nxt_direction = random.choice(available)
 
     def _check_entity_collision(self):
         for gr in self.ghosts_rend:
@@ -588,6 +718,8 @@ class GameLoop:
                     if self.pacman_rend.lives <= 0:
                         exit(0)
                     self.pacman_rend.entity.pos = rl.Vector2(self.maze_rend.start_x, self.maze_rend.start_y)
+                    self.pacman_rend.entity.cur_direction = _Direction.NONE
+                    self.pacman_rend.entity.nxt_direction = _Direction.NONE
                 elif gr.ghost.state == gr.ghost.GhostState.FRIGHTENED:
                     gr.change_state(gr.ghost.GhostState.EATEN)
                     self.score += CONFIG.points_per_ghost
@@ -633,7 +765,7 @@ class GameLoop:
             self.pacman_rend.draw()
             rl.draw_text(f"Score: {self.score}", 7, 7, 25, rl.WHITE)
             rl.draw_text(str(rl.get_fps()), 7, 47, 25, rl.WHITE)
-            rl.draw_text("Pause: P", 7, 87, 25, rl.WHITE)
+            rl.draw_text("Pause: Space", 7, 87, 25, rl.WHITE)
             rl.draw_text("Cheat Mode: C", 7, 127, 25, rl.WHITE)
 
             if self.state is self.GameState.PAUSED:

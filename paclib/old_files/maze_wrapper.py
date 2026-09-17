@@ -1,19 +1,21 @@
 import random
 from typing import List
-from mazegenerator import MazeGenerator # type: ignore
+from mazegenerator import MazeGenerator  # type: ignore
 
 EAST = 2
 SOUTH = 4
+
 
 def maze_printer(maze: List[List[int]]):
     for row in maze:
         print(row)
 
+
 def maze_generator():
     amazing_maze = MazeGenerator()
     rows = len(amazing_maze.maze)
     cols = len(amazing_maze.maze[0])
-    
+
     forty_two = [
         [1, 0, 0, 0, 1, 1, 1],
         [1, 0, 0, 0, 0, 0, 1],
@@ -21,13 +23,14 @@ def maze_generator():
         [0, 0, 1, 0, 1, 0, 0],
         [0, 0, 1, 0, 1, 1, 1]
     ]
-    
+
     is_42_cell = set()
 
     vis_rows = rows * 2 + 1
     vis_cols = cols * 2 + 1
 
-    vis_map: List[List[int]] = [[1 for _ in range(vis_cols)] for _ in range(vis_rows)]
+    vis_map: List[List[int]] = [
+        [1 for _ in range(vis_cols)] for _ in range(vis_rows)]
 
     if len(forty_two) * 2 <= rows and len(forty_two[0]) * 2 <= cols:
         posy = int((rows - len(forty_two)) / 2)
@@ -36,7 +39,7 @@ def maze_generator():
             for x in range(len(forty_two[0])):
                 if forty_two[y][x] == 1:
                     is_42_cell.add((posx + x, posy + y))
-                    
+
     valid_paths = []
 
     for r in range(rows):
@@ -66,5 +69,5 @@ def maze_generator():
     maze_printer(amazing_maze.maze)
     print("Maze Wrapper")
     maze_printer(vis_map)
-    
+
     return vis_map

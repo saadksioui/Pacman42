@@ -47,7 +47,6 @@ class Pacman(Entity):
         self.op_timer = 0.0
 
 
-
 class Ghost(Entity):
     class State(Enum):
         CHASE = "chase"
@@ -62,7 +61,6 @@ class Ghost(Entity):
         self.name = name
         self.start_pos = init_pos
         self.prev_pos: tuple[int, int] | None = None
-
 
     def get_target(self, pacman: Pacman,
                    blinky_pos: tuple[int, int]
@@ -79,12 +77,13 @@ class Ghost(Entity):
         elif self.name == "Inky":
             pivot_x = px + (dx * 2)
             pivot_y = py + (dy * 2)
-            
+
             if blinky_pos:
                 vec_x = pivot_x - blinky_pos[0]
                 vec_y = pivot_y - blinky_pos[1]
-                
-                return (blinky_pos[0] + (vec_x * 2), blinky_pos[1] + (vec_y * 2))
+
+                return (blinky_pos[0] + (vec_x * 2),
+                        blinky_pos[1] + (vec_y * 2))
             return (px, py)
 
         elif self.name == "Clyde":
