@@ -264,21 +264,29 @@ class _Logo:
 
 class HomePage:
     @staticmethod
-    def buttons(
-        buttons: list[_HomeButton],
-        mouse_pressed: bool,
-        mouse_position: rl.Vector2
-    ) -> str | None:
-        for b in buttons:
+    def buttons(buttons: list[_HomeButton]) -> str | None:
+        selected = -1
+        for i, b in enumerate(buttons):
+            if rl.is_key_pressed(rl.KeyboardKey.KEY_ENTER) and b.selected:
+                   return b.text
+            if b.selected:
+                selected = i
             b.draw()
-            if rl.check_collision_point_rec(mouse_position, b.rectangle):
-                if mouse_pressed:
-                    return b.text
-                rl.draw_rectangle_lines_ex(
-                    b.rectangle,
-                    10,
-                    rl.BLACK,
-                )
+        if rl.is_key_pressed(rl.KeyboardKey.KEY_DOWN):
+            buttons[selected].selected = False
+            selected += 1
+            if selected >= len(buttons):
+                selected = 0
+            buttons[selected].selected = True
+
+        if rl.is_key_pressed(rl.KeyboardKey.KEY_UP):
+            buttons[selected].selected = False
+            selected -= 1
+            if selected < 0:
+                selected = len(buttons) - 1
+            buttons[selected].selected = True
+
+
         return None
 
     @classmethod
@@ -286,12 +294,10 @@ class HomePage:
         buttons: list[_HomeButton] = _HomeButton.create(["play", "score", "exit"])
         clicked_button: str | None = None
         while not rl.window_should_close():
-            mouse_click = rl.is_mouse_button_pressed(rl.MouseButton.MOUSE_BUTTON_LEFT)
-            mouse_pos = rl.get_mouse_position()
             rl.begin_drawing()
             rl.clear_background(rl.BLACK)
             _Logo.draw()
-            clicked_button = cls.buttons(buttons, mouse_click, mouse_pos)
+            clicked_button = cls.buttons(buttons)
             rl.end_drawing()
 
 
