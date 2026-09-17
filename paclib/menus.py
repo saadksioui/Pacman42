@@ -167,7 +167,7 @@ class GamePage:
             game = GameLoop(maze, curr_lives, curr_score)
             result = game.run()
             if result is None:
-                continue
+                return
             score, win_or_lose, lives = result
             if not win_or_lose:
                 SaveScorePage(score).draw()
