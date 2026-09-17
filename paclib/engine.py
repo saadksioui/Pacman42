@@ -480,6 +480,7 @@ class GameLoop:
     pacgum_rend: _PacgumRender
     score: int
     state: GameState
+    cheat_mode: bool
     
 
     def __init__(self, maze: list[list[int]], lives: int, score) -> None:
@@ -489,6 +490,7 @@ class GameLoop:
         self.pacgum_rend = _PacgumRender(self.maze_rend)
         self.score = score
         self.state = self.GameState.PLAYING
+        self.cheat_mode = False
 
     def _create_ghosts(self) -> list[_GhostRender]:
         max_x = self.maze_rend.maze_width - 1
@@ -733,6 +735,8 @@ class GameLoop:
     def run(self) -> tuple[int, bool, int] | None:
         pause_menu: PauseMenu = PauseMenu()
         while not rl.window_should_close():
+            if rl.is_key_pressed(rl.KeyboardKey.KEY_C):
+                self.cheat_mode = not self.cheat_mode
             if rl.is_key_pressed(rl.KeyboardKey.KEY_SPACE):
                 if self.state is self.GameState.PLAYING:
                     self.state = self.GameState.PAUSED
@@ -742,10 +746,15 @@ class GameLoop:
             if self.state is self.GameState.PAUSED:
                 match pause_menu.handle_keyboard():
                     case "main menu":
-                        return
+                        return 
                     case "resume":
                         self.state = self.GameState.PLAYING
-
+            if self.cheat_mode:
+                rl.draw_text("Invincible: F1", 7, 217, 25, rl.WHITE)
+                rl.draw_text("Level Skip: F2", 7, 257, 25, rl.WHITE)
+                rl.draw_text("Ghost Freeze: F3", 7, 307, 25, rl.WHITE)
+                rl.draw_text("Extra lives: F4", 7, 347, 25, rl.WHITE)
+                rl.draw_text("Increased Speed: F5", 7, 387, 25, rl.WHITE)
             self._handle_keyboard()
             for g in self.ghosts_rend:
                 self._set_ghost_path(g.ghost)
