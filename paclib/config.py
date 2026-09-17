@@ -11,7 +11,7 @@ class Level(BaseModel):
 
 
 class Config(BaseModel):
-    highscore_path: str = "scores.json"
+    highscore_path: str = "highscores.json"
     levels: list[Level] = Field(
         default=[Level() for _ in range(10)],
         min_length=10

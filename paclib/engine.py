@@ -482,12 +482,12 @@ class GameLoop:
     state: GameState
     
 
-    def __init__(self, maze: list[list[int]], lives: int) -> None:
+    def __init__(self, maze: list[list[int]], lives: int, score) -> None:
         self.maze_rend = _MazeRender(maze)
         self.pacman_rend = _PacmanRender(self.maze_rend, lives)
         self.ghosts_rend = self._create_ghosts()
         self.pacgum_rend = _PacgumRender(self.maze_rend)
-        self.score = 0
+        self.score = score
         self.state = self.GameState.PLAYING
 
     def _create_ghosts(self) -> list[_GhostRender]:
@@ -716,16 +716,21 @@ class GameLoop:
                 if gr.ghost.state == gr.ghost.GhostState.CHASE:
                     self.pacman_rend.lives -= 1
                     if self.pacman_rend.lives <= 0:
-                        exit(0)
-                    self.pacman_rend.entity.pos = rl.Vector2(self.maze_rend.start_x, self.maze_rend.start_y)
+                        return True
+                    mid_x = self.maze_rend.maze_width // 2
+                    mid_y = self.maze_rend.maze_height // 2
+                    respawn_x = self.maze_rend.start_x + (mid_x * self.maze_rend.wall_length)
+                    respawn_y = self.maze_rend.start_y + (mid_y * self.maze_rend.wall_length)
+                    
+                    self.pacman_rend.entity.pos = rl.Vector2(respawn_x, respawn_y)
                     self.pacman_rend.entity.cur_direction = _Direction.NONE
                     self.pacman_rend.entity.nxt_direction = _Direction.NONE
                 elif gr.ghost.state == gr.ghost.GhostState.FRIGHTENED:
                     gr.change_state(gr.ghost.GhostState.EATEN)
                     self.score += CONFIG.points_per_ghost
+        return False
 
-
-    def run(self) -> None:
+    def run(self) -> tuple[int, bool, int] | None:
         pause_menu: PauseMenu = PauseMenu()
         while not rl.window_should_close():
             if rl.is_key_pressed(rl.KeyboardKey.KEY_SPACE):
@@ -746,7 +751,8 @@ class GameLoop:
                 self._set_ghost_path(g.ghost)
                 self._move_entity(g.entity)
             self._move_entity(self.pacman_rend.entity)
-            self._check_entity_collision()
+            if self._check_entity_collision():
+                return (self.score, False, self.pacman_rend.lives)
 
             is_super_pacgum, score = self.pacgum_rend.pacman_collect(self.pacman_rend.entity)
             self.score += score
@@ -754,6 +760,8 @@ class GameLoop:
                 for gr in self.ghosts_rend:
                     gr.change_state(_Ghost.GhostState.FRIGHTENED)
 
+            if len(self.pacgum_rend.pacgum_set) == 0:
+                return (self.score, True, self.pacman_rend.lives)
             rl.begin_drawing()
 
             rl.clear_background(rl.BLACK)

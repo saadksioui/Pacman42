@@ -5,6 +5,8 @@ from functools import lru_cache
 from .engine import GameLoop
 from ._gui_init import SCREEN_HEIGHT, SCREEN_WIDTH
 import pyray as rl
+from pathlib import Path
+import json
 
 
 
@@ -12,14 +14,14 @@ class LeaderBoardPage:
     @lru_cache
     @staticmethod
     def _load_scores() -> list[Score]:
-        from random import randint
-        lst = [
-            Score(score=randint(300000, 600000), owner="puckman"),
-            Score(score=randint(1,10), owner="hello")
-        ]
-        for _ in range(8):
-            lst.append(Score(score=randint(1,30000), owner="hello"))
-        return lst
+        results = []
+        file_path = Path(CONFIG.highscore_path)
+        if file_path.exists():
+            with open(file_path, 'r') as file:
+                content = json.load(file)
+            for item in content:
+                results.append(Score(score=item['score'], owner=item['name']))
+        return results
 
     @classmethod
     def _draw_scores(cls) -> None:
@@ -76,7 +78,23 @@ class SaveScorePage:
         self.score = score
 
     def _save_in_file(self, name: str) -> None:
-        raise NotImplementedError
+        file_path = Path(CONFIG.highscore_path)
+        scores = [
+            {
+                "name": name,
+                'score': self.score
+            }
+        ]
+        if file_path.exists():
+            with open(CONFIG.highscore_path, 'r') as file:
+                content = json.load(file)
+            scores.extend(content)
+            sorted_scores = sorted(scores, key=lambda item: item['score'], reverse=True)[:10]
+            with open(CONFIG.highscore_path, 'w') as file:
+                json.dump(sorted_scores, file)
+        else:
+            with open(CONFIG.highscore_path, 'w') as file:
+                json.dump(scores, file)
 
     def _should_save(self) -> bool:
         return True
@@ -139,14 +157,24 @@ class SaveScorePage:
 class GamePage:
     @staticmethod
     def draw() -> None:
-        levels = CONFIG.levels
+        levels = CONFIG.levels or []
+        curr_lives = CONFIG.lives
+        curr_score = 0
         while not rl.window_should_close() and levels:
             lvl = levels[0]
             levels = levels[1:]
             maze = MazeGenerator(size=(lvl.height, lvl.width), seed=CONFIG.seed).maze
-            game = GameLoop(maze, CONFIG.lives)
-            game.run()
-            print(game.score)
+            game = GameLoop(maze, curr_lives, curr_score)
+            result = game.run()
+            if result is None:
+                continue
+            score, win_or_lose, lives = result
+            if not win_or_lose:
+                SaveScorePage(score).draw()
+                return
+            curr_score = score
+            curr_lives = lives
+            print(score)
 
 
 
