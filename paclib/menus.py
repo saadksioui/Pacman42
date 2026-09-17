@@ -297,6 +297,7 @@ class HomePage:
     def start(cls) -> None:
         buttons: list[_HomeButton] = _HomeButton.create(["play", "score", "exit"])
         clicked_button: str | None = None
+        skip_click = False
         while not rl.window_should_close():
             rl.begin_drawing()
             rl.clear_background(rl.BLACK)
@@ -304,12 +305,16 @@ class HomePage:
             clicked_button = cls.buttons(buttons)
             rl.end_drawing()
 
-
+            if skip_click:
+                clicked_button = None
+            skip_click = False
             if clicked_button is None:
                 pass
             elif clicked_button == "score":
                 LeaderBoardPage.display()
+                skip_click = True
             elif clicked_button == "play":
                 GamePage.draw()
+                skip_click = True
             else:
                 return
