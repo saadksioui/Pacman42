@@ -273,6 +273,7 @@ class _PacmanRender(_EntityRender):
 class _GhostRender(_EntityRender):
     maze_rend: _MazeRender
     ghost: _Ghost
+    
 
     def __init__(self, maze_rend: _MazeRender, ghost: _Ghost) -> None:
         self.maze_rend = maze_rend
@@ -481,11 +482,21 @@ class GameLoop:
     score: int
     state: GameState
     cheat_mode: bool
+    spawn_tiles: dict[_Ghost.GhostType, tuple[int, int]]
     
 
-    def __init__(self, maze: list[list[int]], lives: int, score) -> None:
+    def __init__(self, maze: list[list[int]], lives: int, score: int) -> None:
         self.maze_rend = _MazeRender(maze)
         self.pacman_rend = _PacmanRender(self.maze_rend, lives)
+        max_x = self.maze_rend.maze_width - 1
+        max_y = self.maze_rend.maze_height - 1
+
+        self.spawn_tiles = {
+            _Ghost.GhostType.Blinky: (1, 1),
+            _Ghost.GhostType.Pinky: (max_x, 1),
+            _Ghost.GhostType.Inky: (1, max_y),
+            _Ghost.GhostType.Clyde: (max_x, max_y)
+        }
         self.ghosts_rend = self._create_ghosts()
         self.pacgum_rend = _PacgumRender(self.maze_rend)
         self.score = score
@@ -493,15 +504,7 @@ class GameLoop:
         self.cheat_mode = False
 
     def _create_ghosts(self) -> list[_GhostRender]:
-        max_x = self.maze_rend.maze_width - 1
-        max_y = self.maze_rend.maze_height - 1
-
-        spawn_tiles = [
-            (1, 1),
-            (max_x, 1),
-            (1, max_y),
-            (max_x, max_y)
-        ]
+        
 
         ghosttype = [
             _Ghost.GhostType.Blinky, _Ghost.GhostType.Pinky,
@@ -509,8 +512,8 @@ class GameLoop:
         ]
 
         ghosts:list[_GhostRender] = []
-        for i, gt in enumerate(ghosttype):
-            grid_x, grid_y = spawn_tiles[i]
+        for gt in ghosttype:
+            grid_x, grid_y = self.spawn_tiles[gt]
 
             pixel_x = self.maze_rend.start_x + (grid_x * self.maze_rend.wall_length)
             pixel_y = self.maze_rend.start_y + (grid_y * self.maze_rend.wall_length)
@@ -705,11 +708,6 @@ class GameLoop:
             ghost.nxt_direction = _Direction.DOWN
         elif dy == -1:
             ghost.nxt_direction = _Direction.UP
-        # import random
-        # walls = self.maze_rend.get_cell(ghost)
-        # directions = [_Direction.DOWN, _Direction.UP, _Direction.LEFT, _Direction.RIGHT]
-        # available = [d for d in directions if not walls & d ]
-        # ghost.nxt_direction = random.choice(available)
 
     def _check_entity_collision(self):
         for gr in self.ghosts_rend:
@@ -727,6 +725,15 @@ class GameLoop:
                     self.pacman_rend.entity.pos = rl.Vector2(respawn_x, respawn_y)
                     self.pacman_rend.entity.cur_direction = _Direction.NONE
                     self.pacman_rend.entity.nxt_direction = _Direction.NONE
+                    for g in self.ghosts_rend:
+                        pos_x, pos_y = self.spawn_tiles[g.ghost.type]
+            
+                        pixel_x = self.maze_rend.start_x + (pos_x * self.maze_rend.wall_length)
+                        pixel_y = self.maze_rend.start_y + (pos_y * self.maze_rend.wall_length)
+                        g.ghost.pos = rl.Vector2(pixel_x, pixel_y)
+                        g.ghost.cur_direction = _Direction.NONE
+                        g.ghost.nxt_direction = _Direction.NONE
+                        g.change_state(_Ghost.GhostState.CHASE)
                 elif gr.ghost.state == gr.ghost.GhostState.FRIGHTENED:
                     gr.change_state(gr.ghost.GhostState.EATEN)
                     self.score += CONFIG.points_per_ghost

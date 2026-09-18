@@ -148,8 +148,12 @@ class SaveScorePage:
             rl.clear_background(rl.BLACK)
             self._draw_text(name)
             rl.end_drawing()
+        while rl.is_key_down(rl.KeyboardKey.KEY_ENTER) and not rl.window_should_close():
+                rl.begin_drawing()
+                rl.end_drawing()
         if len(name) == 11:
             self._save_in_file(name)
+        
 
 ############################################
 # GamePage

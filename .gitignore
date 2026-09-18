@@ -12,3 +12,4 @@ wheels/
 # Game vars
 scores.json
 .vscode/
+highscores.json
