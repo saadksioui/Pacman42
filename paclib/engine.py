@@ -3,7 +3,7 @@ from paclib.config import CONFIG
 from ._gui_init import SCREEN_HEIGHT, SCREEN_WIDTH
 from enum import Enum, IntEnum
 from collections import deque
-
+import random
 
 
 
@@ -15,8 +15,8 @@ class _Direction(IntEnum):
     NONE = 0
 
 PACMAN_SPEED: float = 4.2
-CHASE_GHOST_SPEED: float = 3.0
-FRIGHTENED_GHOST_SPEED: float = 2.0
+CHASE_GHOST_SPEED: float = 2.0
+FRIGHTENED_GHOST_SPEED: float = 2.5
 EATEN_GHOST_SPEED: float = 6.2
 
 class _Entity:
@@ -52,10 +52,11 @@ class _Ghost(_Entity):
     type: GhostType
     state: GhostState
 
-    def __init__(self, start_pos: rl.Vector2, type: GhostType) -> None:
+    def __init__(self, start_pos: rl.Vector2, type: GhostType, spawn_pos: tuple[int, int]) -> None:
         super().__init__(start_pos, CHASE_GHOST_SPEED)
         self.type = type
         self.state = _Ghost.GhostState.CHASE
+        self.spawn_pos = spawn_pos
 
 
 
@@ -519,42 +520,14 @@ class GameLoop:
             pixel_y = self.maze_rend.start_y + (grid_y * self.maze_rend.wall_length)
             start_pos = rl.Vector2(pixel_x, pixel_y)
             ghosts.append(
-                _GhostRender(self.maze_rend, _Ghost(start_pos, gt))
+                _GhostRender(self.maze_rend, _Ghost(start_pos, gt, (grid_x, grid_y)))
             )
 
         return ghosts
 
-    def __get_target(self, ghost: _Ghost, blinky_pos: tuple[int, int] | None) -> tuple[int, int]:
+    def __get_target(self) -> tuple[int, int]:
         px, py = self.maze_rend.get_cell_cord(self.pacman_rend.entity)
-        dx, dy = 0, 0
-        if self.pacman_rend.entity.cur_direction == _Direction.UP: 
-            dy = -1
-        elif self.pacman_rend.entity.cur_direction == _Direction.DOWN: 
-            dy = 1
-        elif self.pacman_rend.entity.cur_direction == _Direction.LEFT:
-            dx = -1
-        elif self.pacman_rend.entity.cur_direction == _Direction.RIGHT:
-            dx = 1
-
-        match ghost.type:
-            case _Ghost.GhostType.Blinky:
-                return (px, py)
-            case _Ghost.GhostType.Pinky:
-                return (px + (dx * 4), py + (dy * 4))
-            case _Ghost.GhostType.Inky:
-                if not blinky_pos:
-                    return (px, py)
-                pivot_x = px + (dx * 2)
-                pivot_y = py + (dy * 2)
-                vec_x = pivot_x - blinky_pos[0]
-                vec_y = pivot_y - blinky_pos[1]
-                return (blinky_pos[0] + (vec_x * 2), blinky_pos[1] + (vec_y * 2))
-            case _Ghost.GhostType.Clyde:
-                gh_x, gh_y = self.maze_rend.get_cell_cord(ghost)
-                dist = abs(px - gh_x) + abs(py - gh_y)
-                if dist > 8:
-                    return (px, py)
-                return (gh_x, gh_y)
+        return (px, py)
 
     def _run_bfs(self, start: tuple[int, int], target: tuple[int, int], curr_direction: _Direction):
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
@@ -582,7 +555,6 @@ class GameLoop:
             opp_turn_pos = (sx, sy)
         queue = deque([start])
         parent: dict[tuple[int, int], tuple[int, int] | None] = {start: None}
-
         found = False
         while queue:
             curr = queue.popleft()
@@ -611,8 +583,6 @@ class GameLoop:
                         parent[nxt] = curr
                         queue.append(nxt)
 
-        if target not in parent:
-            return
         if found:
             path = []
             curr = target
@@ -675,22 +645,41 @@ class GameLoop:
         elif rl.is_key_down(rl.KeyboardKey.KEY_RIGHT):
             self.pacman_rend.entity.nxt_direction = _Direction.RIGHT
 
+    def _set_frightened_direction(self, ghost: _Ghost):
+        opp_directions = {
+            _Direction.UP: _Direction.DOWN,
+            _Direction.DOWN: _Direction.UP,
+            _Direction.RIGHT: _Direction.LEFT,
+            _Direction.LEFT: _Direction.RIGHT,
+        }
+        forbidden = opp_directions.get(ghost.cur_direction)
+        open_directions = [
+            d for d in (_Direction.UP, _Direction.DOWN, _Direction.LEFT, _Direction.RIGHT)
+            if d is not forbidden and self.maze_rend.can_move_to_direction(d, ghost)
+        ]
+        if not open_directions:
+            if forbidden is not None and self.maze_rend.can_move_to_direction(forbidden, ghost):
+                open_directions = [forbidden]
+            else:
+                return
+    
+        ghost.nxt_direction = random.choice(open_directions)
+    
     def _set_ghost_path(self, ghost: _Ghost) -> None:
         if not self.maze_rend.is_close_cellcenter(ghost):
             return
 
         curr_x, curr_y = self.maze_rend.get_cell_cord(ghost)
         start = (curr_x, curr_y)
-        blinky = next((g for g in self.ghosts_rend if g.ghost.type == _Ghost.GhostType.Blinky), None)
-        blinky_pos = self.maze_rend.get_cell_cord(blinky.ghost) if blinky else None
 
+        if ghost.state == ghost.GhostState.FRIGHTENED:
+            self._set_frightened_direction(ghost)
+            return
         target: tuple[int, int] | None = None
         if ghost.state == ghost.GhostState.CHASE:
-            target = self.__get_target(ghost, blinky_pos)
-        elif ghost.state == ghost.GhostState.FRIGHTENED:
-            target = (0, 0)
+            target = self.__get_target()
         elif ghost.state == ghost.GhostState.EATEN:
-            target = (0, 0)
+            target = ghost.spawn_pos
 
         if target is None:
             return

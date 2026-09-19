@@ -178,7 +178,7 @@ class GamePage:
                 return
             curr_score = score
             curr_lives = lives
-            print(score)
+            continue
 
 
 
