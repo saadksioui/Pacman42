@@ -535,37 +535,15 @@ class GameLoop:
 
         return ghosts
 
-    def _run_bfs(self, start: tuple[int, int], target: tuple[int, int], curr_direction: _Direction):
+    def _run_bfs(self, start: tuple[int, int], target: tuple[int, int]):
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
         if start == target:
             return None
-        opp_directions = {
-            _Direction.UP: _Direction.DOWN,
-            _Direction.DOWN: _Direction.UP,
-            _Direction.RIGHT: _Direction.LEFT,
-            _Direction.LEFT: _Direction.RIGHT,
-        }
-        if curr_direction == _Direction.NONE:
-            opp_turn_pos = None
-        else:
-            sx, sy = start
-            match opp_directions[curr_direction]:
-                case _Direction.DOWN:
-                    sy += 1
-                case _Direction.UP:
-                    sy -= 1
-                case _Direction.LEFT:
-                    sx -= 1
-                case _Direction.RIGHT:
-                    sx += 1
-            opp_turn_pos = (sx, sy)
         queue = deque([start])
         parent: dict[tuple[int, int], tuple[int, int] | None] = {start: None}
-        found = False
         while queue:
             curr = queue.popleft()
             if curr == target:
-                found = True
                 break
 
             for dx, dy in directions:
@@ -573,7 +551,6 @@ class GameLoop:
                 if (
                     0 <= nxt[0] < self.maze_rend.maze_width
                     and 0 <= nxt[1] < self.maze_rend.maze_height
-                    and nxt != opp_turn_pos
                 ):
                     curr_cell = self.maze_rend.maze[curr[1]][curr[0]]
                     path_is_open = False
@@ -588,17 +565,18 @@ class GameLoop:
                     if path_is_open and nxt not in parent:
                         parent[nxt] = curr
                         queue.append(nxt)
+        else:
+            return None
 
-        if found:
-            path = []
-            curr = target
-            while curr is not None:
-                path.append(curr)
-                curr = parent[curr]
-            path.reverse()
+        path = []
+        curr = target
+        while curr is not None:
+            path.append(curr)
+            curr = parent[curr]
+        path.reverse()
 
-            if len(path) > 1:
-                return path[1]
+        if len(path) > 1:
+            return path[1]
 
     def _move_entity(self, entity: _Entity) -> None:
         if self.state is self.GameState.PAUSED:
@@ -693,7 +671,7 @@ class GameLoop:
         if target is None:
             return
 
-        next_step = self._run_bfs(start, target, ghost.cur_direction)
+        next_step = self._run_bfs(start, target)
         if next_step is None:
             return
         dx = next_step[0] - curr_x
