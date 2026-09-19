@@ -274,7 +274,7 @@ class _PacmanRender(_EntityRender):
 class _GhostRender(_EntityRender):
     maze_rend: _MazeRender
     ghost: _Ghost
-    
+
 
     def __init__(self, maze_rend: _MazeRender, ghost: _Ghost) -> None:
         self.maze_rend = maze_rend
@@ -494,7 +494,7 @@ class GameLoop:
     state: GameState
     cheat_mode: bool
     spawn_tiles: dict[_Ghost.GhostType, tuple[int, int]]
-    
+
 
     def __init__(self, maze: list[list[int]], lives: int, score: int) -> None:
         self.maze_rend = _MazeRender(maze)
@@ -515,7 +515,7 @@ class GameLoop:
         self.cheat_mode = False
 
     def _create_ghosts(self) -> list[_GhostRender]:
-        
+
 
         ghosttype = [
             _Ghost.GhostType.Blinky, _Ghost.GhostType.Pinky,
@@ -534,10 +534,6 @@ class GameLoop:
             )
 
         return ghosts
-
-    def __get_target(self) -> tuple[int, int]:
-        px, py = self.maze_rend.get_cell_cord(self.pacman_rend.entity)
-        return (px, py)
 
     def _run_bfs(self, start: tuple[int, int], target: tuple[int, int], curr_direction: _Direction):
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
@@ -603,7 +599,7 @@ class GameLoop:
 
             if len(path) > 1:
                 return path[1]
-    
+
     def _move_entity(self, entity: _Entity) -> None:
         if self.state is self.GameState.PAUSED:
             return
@@ -618,18 +614,7 @@ class GameLoop:
                 entity.nxt_direction = _Direction.NONE
                 self.maze_rend.move_to_cellcenter(entity)
                 return
-        if self.maze_rend.can_move_to_direction(entity.cur_direction, entity):
-            to_move = self.maze_rend.wall_length * entity.speed * rl.get_frame_time()
-            match entity.cur_direction:
-                case _Direction.UP:
-                    entity.pos.y -= to_move
-                case _Direction.DOWN:
-                    entity.pos.y += to_move
-                case _Direction.LEFT:
-                    entity.pos.x -= to_move
-                case _Direction.RIGHT:
-                    entity.pos.x += to_move
-        elif not self.maze_rend.is_close_cellcenter(entity):
+        if self.maze_rend.can_move_to_direction(entity.cur_direction, entity) or not self.maze_rend.is_close_cellcenter(entity):
             to_move = self.maze_rend.wall_length * entity.speed * rl.get_frame_time()
             match entity.cur_direction:
                 case _Direction.UP:
@@ -656,25 +641,39 @@ class GameLoop:
             self.pacman_rend.entity.nxt_direction = _Direction.RIGHT
 
     def _set_frightened_direction(self, ghost: _Ghost):
-        opp_directions = {
-            _Direction.UP: _Direction.DOWN,
-            _Direction.DOWN: _Direction.UP,
-            _Direction.RIGHT: _Direction.LEFT,
-            _Direction.LEFT: _Direction.RIGHT,
-        }
-        forbidden = opp_directions.get(ghost.cur_direction)
-        open_directions = [
-            d for d in (_Direction.UP, _Direction.DOWN, _Direction.LEFT, _Direction.RIGHT)
-            if d is not forbidden and self.maze_rend.can_move_to_direction(d, ghost)
-        ]
-        if not open_directions:
-            if forbidden is not None and self.maze_rend.can_move_to_direction(forbidden, ghost):
-                open_directions = [forbidden]
-            else:
+        if rl.vector2_distance(ghost.pos, self.pacman_rend.entity.pos) >= self.maze_rend.wall_length * 5:
+            if self.maze_rend.can_move_to_direction(ghost.cur_direction, ghost):
                 return
-    
-        ghost.nxt_direction = random.choice(open_directions)
-    
+            ghost.nxt_direction = random.choice(
+                [
+                    d for d in (_Direction.UP, _Direction.DOWN, _Direction.LEFT, _Direction.RIGHT)
+                    if self.maze_rend.can_move_to_direction(d, ghost)
+                ]
+            )
+            return
+        directions = {
+            _Direction.UP: rl.Vector2(ghost.pos.x, ghost.pos.y - self.maze_rend.wall_length),
+            _Direction.LEFT: rl.Vector2(ghost.pos.x - self.maze_rend.wall_length, ghost.pos.y),
+            _Direction.DOWN: rl.Vector2(ghost.pos.x, ghost.pos.y + self.maze_rend.wall_length),
+            _Direction.RIGHT: rl.Vector2(ghost.pos.x + self.maze_rend.wall_length, ghost.pos.y)
+        }
+        vectors = {v: k for k, v in directions.items()}
+        allowed: list[rl.Vector2] = []
+        for drct, vct in directions.items():
+            if self.maze_rend.can_move_to_direction(drct, ghost):
+                allowed.append(vct)
+        allowed = sorted(
+            allowed,
+            key=lambda vct: rl.vector2_distance(vct, self.pacman_rend.entity.pos)
+        )
+        ghost.nxt_direction = vectors[allowed[-1]]
+
+
+
+
+
+
+
     def _set_ghost_path(self, ghost: _Ghost) -> None:
         if not self.maze_rend.is_close_cellcenter(ghost):
             return
@@ -687,7 +686,7 @@ class GameLoop:
             return
         target: tuple[int, int] | None = None
         if ghost.state == ghost.GhostState.CHASE:
-            target = self.__get_target()
+            target = self.maze_rend.get_cell_cord(self.pacman_rend.entity)
         elif ghost.state == ghost.GhostState.EATEN:
             target = ghost.spawn_pos
 
@@ -720,13 +719,13 @@ class GameLoop:
                     mid_y = self.maze_rend.maze_height // 2
                     respawn_x = self.maze_rend.start_x + (mid_x * self.maze_rend.wall_length)
                     respawn_y = self.maze_rend.start_y + (mid_y * self.maze_rend.wall_length)
-                    
+
                     self.pacman_rend.entity.pos = rl.Vector2(respawn_x, respawn_y)
                     self.pacman_rend.entity.cur_direction = _Direction.NONE
                     self.pacman_rend.entity.nxt_direction = _Direction.NONE
                     for g in self.ghosts_rend:
                         pos_x, pos_y = self.spawn_tiles[g.ghost.type]
-            
+
                         pixel_x = self.maze_rend.start_x + (pos_x * self.maze_rend.wall_length)
                         pixel_y = self.maze_rend.start_y + (pos_y * self.maze_rend.wall_length)
                         g.ghost.pos = rl.Vector2(pixel_x, pixel_y)

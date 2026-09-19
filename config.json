@@ -15,8 +15,36 @@
   // Level Dimensions (Array of multiple levels)
   "levels": [
     {
-      "width": 21,
-      "height": 21
+      "width": 10,
+      "height": 10
+    },
+    {
+      "width": 25,
+      "height": 25
+    },
+    {
+      "width": 25,
+      "height": 25
+    },
+    {
+      "width": 25,
+      "height": 25
+    },
+    {
+      "width": 25,
+      "height": 25
+    },
+    {
+      "width": 25,
+      "height": 25
+    },
+    {
+      "width": 25,
+      "height": 25
+    },
+    {
+      "width": 25,
+      "height": 25
     },
     {
       "width": 25,
