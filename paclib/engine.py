@@ -286,10 +286,12 @@ class _GhostRender(_EntityRender):
         )
         self.ghost = ghost
         self.frightened_timer: float = 0.0
+        self.eaten_timer: float = 0.0
 
 
     def draw(self, game_paused: bool) -> None:
         self._cancel_frightened_state(game_paused)
+        self._cancel_eaten_state(game_paused)
         idx = {
             _Direction.RIGHT: 0, _Direction.NONE: 0,
             _Direction.LEFT: 1,
@@ -323,6 +325,7 @@ class _GhostRender(_EntityRender):
                 self.ghost.speed = CHASE_GHOST_SPEED
 
             case _Ghost.GhostState.EATEN:
+                self.eaten_timer = 0.0
                 self.max_frames = 0
                 self.src_mask_rec.y = 5 * 16
                 self.src_mask_rec.x = 8 * 16
@@ -337,6 +340,13 @@ class _GhostRender(_EntityRender):
         if 4 < self.frightened_timer < 7:
             self.max_frames = 3
         if self.frightened_timer > 7:
+            self.change_state(_Ghost.GhostState.CHASE)
+
+    def _cancel_eaten_state(self, game_paused: bool) -> None:
+        if self.ghost.state is not _Ghost.GhostState.EATEN or game_paused:
+            return
+        self.eaten_timer += rl.get_frame_time()
+        if self.eaten_timer > 5:
             self.change_state(_Ghost.GhostState.CHASE)
 
 
@@ -742,7 +752,7 @@ class GameLoop:
             if self.state is self.GameState.PAUSED:
                 match pause_menu.handle_keyboard():
                     case "main menu":
-                        return 
+                        return None
                     case "resume":
                         self.state = self.GameState.PLAYING
             if self.cheat_mode:

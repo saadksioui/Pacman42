@@ -153,7 +153,7 @@ class SaveScorePage:
                 rl.end_drawing()
         if len(name) == 11:
             self._save_in_file(name)
-        
+
 
 ############################################
 # GamePage
@@ -179,7 +179,8 @@ class GamePage:
             curr_score = score
             curr_lives = lives
             continue
-
+        if not rl.window_should_close():
+            SaveScorePage(curr_score).draw()
 
 
 
