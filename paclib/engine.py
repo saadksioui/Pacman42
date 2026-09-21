@@ -74,7 +74,7 @@ class _SuperPacgum(_Pacgum):
     pass
 
 
-WALL_THICKNESS: float = 2.0
+WALL_THICKNESS: float = 4.0
 MAZE_PADDING: int = 50
 
 
@@ -126,19 +126,19 @@ class _MazeRender:
                     rl.draw_line_ex(
                         topleft_corner,
                         topright_corner,
-                        WALL_THICKNESS, rl.GREEN
+                        WALL_THICKNESS, rl.DARKBLUE
                     )
-                    rl.draw_circle_v(topleft_corner, WALL_THICKNESS / 2, rl.WHITE)
-                    rl.draw_circle_v(topright_corner, WALL_THICKNESS / 2, rl.WHITE)
+                    rl.draw_circle_v(topleft_corner, WALL_THICKNESS / 2, rl.DARKBLUE)
+                    rl.draw_circle_v(topright_corner, WALL_THICKNESS / 2, rl.DARKBLUE)
                 # west wall
                 if cell & 0b1000:
                     rl.draw_line_ex(
                         topleft_corner,
                         bottomleft_corner,
-                        WALL_THICKNESS, rl.BLUE
+                        WALL_THICKNESS, rl.DARKBLUE
                     )
-                    rl.draw_circle_v(topleft_corner, WALL_THICKNESS / 2, rl.WHITE)
-                    rl.draw_circle_v(bottomleft_corner, WALL_THICKNESS / 2, rl.WHITE)
+                    rl.draw_circle_v(topleft_corner, WALL_THICKNESS / 2, rl.DARKBLUE)
+                    rl.draw_circle_v(bottomleft_corner, WALL_THICKNESS / 2, rl.DARKBLUE)
                 # south side
                 if i == self.maze_height - 1:
                     rl.draw_line_ex(
@@ -146,8 +146,8 @@ class _MazeRender:
                         bottomright_corner,
                         WALL_THICKNESS, rl.BLUE
                     )
-                    rl.draw_circle_v(bottomright_corner, WALL_THICKNESS / 2, rl.WHITE)
-                    rl.draw_circle_v(bottomleft_corner, WALL_THICKNESS / 2, rl.WHITE)
+                    rl.draw_circle_v(bottomright_corner, WALL_THICKNESS / 2, rl.DARKBLUE)
+                    rl.draw_circle_v(bottomleft_corner, WALL_THICKNESS / 2, rl.DARKBLUE)
                 # east side
                 if j == self.maze_width - 1:
                     rl.draw_line_ex(
@@ -155,14 +155,14 @@ class _MazeRender:
                         bottomright_corner,
                         WALL_THICKNESS, rl.BLUE
                     )
-                    rl.draw_circle_v(bottomright_corner, WALL_THICKNESS / 2, rl.WHITE)
+                    rl.draw_circle_v(bottomright_corner, WALL_THICKNESS / 2, rl.DARKBLUE)
                 if cell == 0xf:
                     rl.draw_rectangle(
                         int(topleft_corner.x),
                         int(topleft_corner.y),
                         l := self.wall_length,
                         l,
-                        rl.RED
+                        rl.DARKBLUE
                     )
 
     def get_cell_cord(self, entity: _Entity) -> tuple[int, int]:
@@ -391,14 +391,14 @@ class _PacgumRender:
                     int(pg.pos.x),
                     int(pg.pos.y),
                     self.PACGUM_RADIUS * 3,
-                    rl.PURPLE
+                    rl.YELLOW
                 )
             else:
                 rl.draw_circle(
                     int(pg.pos.x),
                     int(pg.pos.y),
                     self.PACGUM_RADIUS,
-                    rl.PURPLE
+                    rl.YELLOW
                 )
 
 
@@ -704,13 +704,13 @@ class GameLoop:
                         mid_y = self.maze_rend.maze_height // 2
                         respawn_x = self.maze_rend.start_x + (mid_x * self.maze_rend.wall_length)
                         respawn_y = self.maze_rend.start_y + (mid_y * self.maze_rend.wall_length)
-    
+
                         self.pacman_rend.entity.pos = rl.Vector2(respawn_x, respawn_y)
                         self.pacman_rend.entity.cur_direction = _Direction.NONE
                         self.pacman_rend.entity.nxt_direction = _Direction.NONE
                         for g in self.ghosts_rend:
                             pos_x, pos_y = self.spawn_tiles[g.ghost.type]
-    
+
                             pixel_x = self.maze_rend.start_x + (pos_x * self.maze_rend.wall_length)
                             pixel_y = self.maze_rend.start_y + (pos_y * self.maze_rend.wall_length)
                             g.ghost.pos = rl.Vector2(pixel_x, pixel_y)
