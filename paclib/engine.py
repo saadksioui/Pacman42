@@ -493,6 +493,9 @@ class GameLoop:
     score: int
     state: GameState
     cheat_mode: bool
+    invincible: bool
+    ghosts_frozen: bool
+    increase_speed: bool
     spawn_tiles: dict[_Ghost.GhostType, tuple[int, int]]
 
 
@@ -513,6 +516,9 @@ class GameLoop:
         self.score = score
         self.state = self.GameState.PLAYING
         self.cheat_mode = False
+        self.invincible = False
+        self.ghosts_frozen = False
+        self.increase_speed = False
 
     def _create_ghosts(self) -> list[_GhostRender]:
 
@@ -690,26 +696,27 @@ class GameLoop:
             distance = rl.vector2_distance(gr.ghost.pos, self.pacman_rend.entity.pos)
             if distance <= self.maze_rend.wall_length * 0.5:
                 if gr.ghost.state == gr.ghost.GhostState.CHASE:
-                    self.pacman_rend.lives -= 1
-                    if self.pacman_rend.lives <= 0:
-                        return True
-                    mid_x = self.maze_rend.maze_width // 2
-                    mid_y = self.maze_rend.maze_height // 2
-                    respawn_x = self.maze_rend.start_x + (mid_x * self.maze_rend.wall_length)
-                    respawn_y = self.maze_rend.start_y + (mid_y * self.maze_rend.wall_length)
-
-                    self.pacman_rend.entity.pos = rl.Vector2(respawn_x, respawn_y)
-                    self.pacman_rend.entity.cur_direction = _Direction.NONE
-                    self.pacman_rend.entity.nxt_direction = _Direction.NONE
-                    for g in self.ghosts_rend:
-                        pos_x, pos_y = self.spawn_tiles[g.ghost.type]
-
-                        pixel_x = self.maze_rend.start_x + (pos_x * self.maze_rend.wall_length)
-                        pixel_y = self.maze_rend.start_y + (pos_y * self.maze_rend.wall_length)
-                        g.ghost.pos = rl.Vector2(pixel_x, pixel_y)
-                        g.ghost.cur_direction = _Direction.NONE
-                        g.ghost.nxt_direction = _Direction.NONE
-                        g.change_state(_Ghost.GhostState.CHASE)
+                    if not self.invincible:
+                        self.pacman_rend.lives -= 1
+                        if self.pacman_rend.lives <= 0:
+                            return True
+                        mid_x = self.maze_rend.maze_width // 2
+                        mid_y = self.maze_rend.maze_height // 2
+                        respawn_x = self.maze_rend.start_x + (mid_x * self.maze_rend.wall_length)
+                        respawn_y = self.maze_rend.start_y + (mid_y * self.maze_rend.wall_length)
+    
+                        self.pacman_rend.entity.pos = rl.Vector2(respawn_x, respawn_y)
+                        self.pacman_rend.entity.cur_direction = _Direction.NONE
+                        self.pacman_rend.entity.nxt_direction = _Direction.NONE
+                        for g in self.ghosts_rend:
+                            pos_x, pos_y = self.spawn_tiles[g.ghost.type]
+    
+                            pixel_x = self.maze_rend.start_x + (pos_x * self.maze_rend.wall_length)
+                            pixel_y = self.maze_rend.start_y + (pos_y * self.maze_rend.wall_length)
+                            g.ghost.pos = rl.Vector2(pixel_x, pixel_y)
+                            g.ghost.cur_direction = _Direction.NONE
+                            g.ghost.nxt_direction = _Direction.NONE
+                            g.change_state(_Ghost.GhostState.CHASE)
                 elif gr.ghost.state == gr.ghost.GhostState.FRIGHTENED:
                     gr.change_state(gr.ghost.GhostState.EATEN)
                     self.score += CONFIG.points_per_ghost
@@ -738,10 +745,25 @@ class GameLoop:
                 rl.draw_text("Ghost Freeze: F3", 7, 307, 25, rl.WHITE)
                 rl.draw_text("Extra lives: F4", 7, 347, 25, rl.WHITE)
                 rl.draw_text("Increased Speed: F5", 7, 387, 25, rl.WHITE)
+                if rl.is_key_pressed(rl.KeyboardKey.KEY_F1):
+                    self.invincible = not self.invincible
+                if rl.is_key_pressed(rl.KeyboardKey.KEY_F2):
+                    self.pacgum_rend.pacgum_set = set()
+                if rl.is_key_pressed(rl.KeyboardKey.KEY_F3):
+                    self.ghosts_frozen = not self.ghosts_frozen
+                if rl.is_key_pressed(rl.KeyboardKey.KEY_F4):
+                    self.pacman_rend.lives += 1
+                if rl.is_key_pressed(rl.KeyboardKey.KEY_F5):
+                    self.increase_speed = not self.increase_speed
+                    if self.increase_speed:
+                        self.pacman_rend.entity.speed = 10.0
+                    else:
+                        self.pacman_rend.entity.speed = PACMAN_SPEED
             self._handle_keyboard()
-            for g in self.ghosts_rend:
-                self._set_ghost_path(g.ghost)
-                self._move_entity(g.entity)
+            if not self.ghosts_frozen:
+                for g in self.ghosts_rend:
+                    self._set_ghost_path(g.ghost)
+                    self._move_entity(g.entity)
             self._move_entity(self.pacman_rend.entity)
             if self._check_entity_collision():
                 return (self.score, False, self.pacman_rend.lives)
