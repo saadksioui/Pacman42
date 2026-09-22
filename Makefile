@@ -3,7 +3,7 @@ run:
 
 install:
 	uv sync
-	uv pip install ./mazegenerator-2.1.0-py3-none-any.whl
+	uv pip install ./mazegenerator*.whl
 
 debug:
 	uv run python3 -m pdb pacman.py config.json
