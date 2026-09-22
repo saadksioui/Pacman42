@@ -7,6 +7,8 @@ import random
 
 
 class _Direction(IntEnum):
+    """Encapsulates cardinal movement
+    directions and bitmask values."""
     UP = 0b0001
     DOWN = 0b0100
     LEFT = 0b1000
@@ -21,6 +23,8 @@ EATEN_GHOST_SPEED: float = 6.2
 
 
 class _Entity:
+    """Base class representing moving
+    characters with position and velocity."""
     pos: rl.Vector2
     cur_direction: _Direction
     nxt_direction: _Direction
@@ -31,6 +35,8 @@ class _Entity:
         start_pos: rl.Vector2,
         speed: float
     ) -> None:
+        """Initializes entity coordinates,
+        directions, and movement speed."""
         self.pos = start_pos
         self.cur_direction = _Direction.NONE
         self.nxt_direction = _Direction.NONE
@@ -38,12 +44,18 @@ class _Entity:
 
 
 class _Ghost(_Entity):
+    """Represents a ghost character with
+    state machines and spawn tracking."""
     class GhostState(Enum):
+        """Defines operational behavioral
+        states for ghosts."""
         CHASE = "CHASE"
         FRIGHTENED = "FRIGHTENED"
         EATEN = "EATEN"
 
     class GhostType(IntEnum):
+        """Identifies specific ghost archetypes
+        (Blinky, Pinky, Inky, Clyde)."""
         Blinky = 4
         Pinky = 5
         Inky = 6
@@ -54,6 +66,8 @@ class _Ghost(_Entity):
 
     def __init__(self, start_pos: rl.Vector2, type: GhostType,
                  spawn_pos: tuple[int, int]) -> None:
+        """Initializes ghost type,
+        chase state, and home spawn position."""
         super().__init__(start_pos, CHASE_GHOST_SPEED)
         self.type = type
         self.state = _Ghost.GhostState.CHASE
@@ -61,18 +75,27 @@ class _Ghost(_Entity):
 
 
 class _Pacman(_Entity):
+    """Represents the player-controlled
+    Pac-Man entity."""
     def __init__(self, start_pos: rl.Vector2) -> None:
+        """Initializes Pac-Man starting
+        position and default velocity."""
         super().__init__(start_pos, PACMAN_SPEED)
 
 
 class _Pacgum:
+    """Represents a collectible
+    standard pacgum pellet."""
     pos: rl.Vector2
 
     def __init__(self, pos: rl.Vector2) -> None:
+        """Initializes pacgum position."""
         self.pos = pos
 
 
 class _SuperPacgum(_Pacgum):
+    """Represents a power pellet that
+    triggers the frightened ghost state."""
     pass
 
 
@@ -81,6 +104,8 @@ MAZE_PADDING: int = 50
 
 
 class _MazeRender:
+    """Handles geometric wall rendering
+    and grid coordinate conversions."""
     maze: list[list[int]]
     maze_height: int
     maze_width: int
@@ -88,6 +113,8 @@ class _MazeRender:
     wall_length: int
 
     def __init__(self, maze: list[list[int]]) -> None:
+        """Initializes maze dimensions,
+        cell scaling, and rendering offsets."""
         self.maze = maze
         self.maze_height = len(self.maze)
         self.maze_width = len(self.maze[0])
@@ -98,12 +125,16 @@ class _MazeRender:
             (self.maze_height * self.wall_length) // 2
 
     def _get_wall_length(self) -> int:
+        """Calculates optimal pixel
+        dimension for individual maze tiles."""
         return min(
             (SCREEN_HEIGHT - MAZE_PADDING * 2) // self.maze_height,
             (SCREEN_WIDTH - MAZE_PADDING * 2) // self.maze_width
         )
 
     def draw(self) -> None:
+        """Renders the classic blue-walled
+        maze structure onto the screen."""
         for i, row in enumerate(self.maze):
             for j, cell in enumerate(row):
                 topleft_corner = rl.Vector2(
@@ -182,6 +213,8 @@ class _MazeRender:
                     )
 
     def get_cell_cord(self, entity: _Entity) -> tuple[int, int]:
+        """Translates continuous pixel
+        positions into grid matrix coordinates."""
         maze_x = round((entity.pos.x - self.start_x) / self.wall_length)
         maze_x = min(maze_x, self.maze_width - 1)
         maze_y = round((entity.pos.y - self.start_y) / self.wall_length)
@@ -189,22 +222,30 @@ class _MazeRender:
         return maze_x, maze_y
 
     def get_cell(self, entity: _Entity) -> int:
+        """Retrieves the bitmask wall
+        value at the entity's current cell."""
         maze_x, maze_y = self.get_cell_cord(entity)
         return self.maze[maze_y][maze_x]
 
     def can_move_to_direction(self, dirct: _Direction,
                               entity: _Entity) -> bool:
+        """Checks if a target direction
+        path is free of structural walls."""
         if dirct is _Direction.NONE:
             return False
         return not (self.get_cell(entity) & dirct.value)
 
     def is_close_cellcenter(self, entity: _Entity) -> bool:
+        """Checks if an entity is aligned
+        close enough to a tile intersection center."""
         return bool(
             ((entity.pos.x - self.start_x) / self.wall_length) % 1 < 0.1
             and ((entity.pos.y - self.start_y) / self.wall_length) % 1 < 0.1
         )
 
     def move_to_cellcenter(self, entity: _Entity) -> None:
+        """Snaps an entity's position
+        exactly onto the grid cell center."""
         maze_x, maze_y = self.get_cell_cord(entity)
         entity.pos.x = self.start_x + self.wall_length * maze_x
         entity.pos.y = self.start_y + self.wall_length * maze_y
@@ -214,7 +255,8 @@ TEXTURE: rl.Texture = rl.load_texture("assets/everything.png")
 
 
 class _EntityRender:
-
+    """Handles frame animation and
+    texture rendering for game entities."""
     entity: _Entity
 
     max_frames: int
@@ -230,6 +272,8 @@ class _EntityRender:
         src_mask_rec: rl.Rectangle,
         dst_mask_rec: rl.Rectangle
     ) -> None:
+        """Initializes sprite rectangles,
+        frame limits, and entity references."""
         self.entity = entity
         self.max_frames = max_frames
         self.cur_frame = 0
@@ -239,7 +283,8 @@ class _EntityRender:
         self._frame_count: int = 0
 
     def draw(self) -> None:
-        # to switch between sprite sheet
+        """Updates animation frames and draws
+        entity sprites from the texture sheet."""
         frame_speed = 7
         self._frame_count += 1
         if self._frame_count >= rl.get_fps() / frame_speed:
@@ -263,10 +308,14 @@ class _EntityRender:
 
 
 class _PacmanRender(_EntityRender):
+    """Manages rendering and directional
+    sprite selection for Pac-Man."""
     maze_rend: _MazeRender
     lives: int
 
     def __init__(self, maze_rend: _MazeRender, lives: int) -> None:
+        """Initializes Pac-Man rendering
+        configuration and starting lives."""
         self.maze_rend = maze_rend
         self.lives = lives
         mid_x = maze_rend.maze_width // 2
@@ -287,6 +336,8 @@ class _PacmanRender(_EntityRender):
         )
 
     def draw(self) -> None:
+        """Selects directional animation
+        frames and draws Pac-Man."""
         idx = {
             _Direction.RIGHT: 0, _Direction.NONE: 0,
             _Direction.LEFT: 1,
@@ -298,10 +349,14 @@ class _PacmanRender(_EntityRender):
 
 
 class _GhostRender(_EntityRender):
+    """Manages ghost rendering, state timers,
+    and color/frightened transitions."""
     maze_rend: _MazeRender
     ghost: _Ghost
 
     def __init__(self, maze_rend: _MazeRender, ghost: _Ghost) -> None:
+        """Initializes ghost rendering
+        bounds and state timers."""
         self.maze_rend = maze_rend
         super().__init__(
             ghost,
@@ -318,6 +373,8 @@ class _GhostRender(_EntityRender):
         self.eaten_timer: float = 0.0
 
     def draw(self, game_paused: bool = False) -> None:
+        """Updates ghost state timers
+        and renders appropriate visual sprites."""
         self._cancel_frightened_state(game_paused)
         self._cancel_eaten_state(game_paused)
         idx = {
@@ -336,6 +393,8 @@ class _GhostRender(_EntityRender):
         super().draw()
 
     def change_state(self, new_state: _Ghost.GhostState) -> None:
+        """Transitions ghost between Chase,
+        Frightened, and Eaten states."""
         self.cur_frame = 0
         match new_state:
             case _Ghost.GhostState.FRIGHTENED:
@@ -363,6 +422,8 @@ class _GhostRender(_EntityRender):
         self.ghost.state = new_state
 
     def _cancel_frightened_state(self, game_paused: bool) -> None:
+        """Tracks the frightened state timer
+        and restores Chase mode when expired."""
         if self.ghost.state is not _Ghost.GhostState.FRIGHTENED or game_paused:
             return
         self.frightened_timer += rl.get_frame_time()
@@ -372,6 +433,8 @@ class _GhostRender(_EntityRender):
             self.change_state(_Ghost.GhostState.CHASE)
 
     def _cancel_eaten_state(self, game_paused: bool) -> None:
+        """Tracks eaten timer duration before
+        respawning ghost into Chase mode."""
         if self.ghost.state is not _Ghost.GhostState.EATEN or game_paused:
             return
         self.eaten_timer += rl.get_frame_time()
@@ -380,8 +443,14 @@ class _GhostRender(_EntityRender):
 
 
 class _PacgumRender:
+    """Manages collection, mapping,
+    and rendering of pacgums and power pellets."""
     def __init__(self, maze_rend: _MazeRender) -> None:
+        """Populates pacgum grid matrices
+        and designates super power pellets."""
         def to_spacgum(x: int, y: int) -> None:
+            """Converts a standard pacgum
+            at coordinates into a Super Pacgum."""
             pg = self.pacgum_map[y][x]
             assert isinstance(pg, _Pacgum)
             self.pacgum_set.remove(pg)
@@ -415,6 +484,8 @@ class _PacgumRender:
         to_spacgum(maze_width - 3, maze_height - 3)
 
     def draw(self) -> None:
+        """Renders all remaining pacgums
+        and blinking super pellets."""
         for pg in self.pacgum_set:
             if isinstance(pg, _SuperPacgum):
                 rl.draw_circle(
@@ -432,6 +503,8 @@ class _PacgumRender:
                 )
 
     def pacman_collect(self, pacman: _Entity) -> tuple[bool, int]:
+        """Detects collisions between Pac-Man
+        and pellets, returning score points."""
         maze_x, maze_y = self.maze_rend.get_cell_cord(pacman)
         pg = self.pacgum_map[maze_y][maze_x]
         if pg is None:
@@ -446,6 +519,8 @@ class _PacgumRender:
 
 
 class PauseMenu:
+    """Manages the in-game pause menu
+    interface and option handling."""
     options: list[str] = [
         "Resume",
         "Main Menu",
@@ -458,9 +533,13 @@ class PauseMenu:
         (font_size * len(options) - font_size // 5 * (len(options) - 1)) // 2
 
     def __init__(self) -> None:
+        """Initializes pause menu
+        with default option selection."""
         self.cur_op = 0
 
     def draw(self) -> None:
+        """Renders pause menu options
+        centered on screen."""
         half_screen = SCREEN_WIDTH // 2
         for i, op in enumerate(self.options):
 
@@ -474,6 +553,8 @@ class PauseMenu:
             )
 
     def handle_keyboard(self) -> str | None:
+        """Processes keyboard inputs
+        for pausing, resuming, or exiting the game."""
         if rl.is_key_pressed(rl.KeyboardKey.KEY_DOWN):
             self.cur_op += 1
             if self.cur_op >= len(self.options):
@@ -494,9 +575,13 @@ class PauseMenu:
 
 
 class _PacmanLives:
+    """Renders remaining player
+    lives icons on the game HUD."""
 
     @staticmethod
     def draw(lives: int) -> None:
+        """Draws mini Pac-Man icons
+        representing player life count."""
         dst = rl.Rectangle(
             10,
             SCREEN_HEIGHT -
@@ -515,7 +600,10 @@ class _PacmanLives:
 
 
 class GameLoop:
+    """Core game engine managing physics updates,
+    BFS pathfinding, and loop rendering."""
     class GameState(Enum):
+        """Defines game loop execution states."""
         PLAYING = "PLAYING"
         PAUSED = "PAUSED"
 
@@ -532,6 +620,8 @@ class GameLoop:
     spawn_tiles: dict[_Ghost.GhostType, tuple[int, int]]
 
     def __init__(self, maze: list[list[int]], lives: int, score: int) -> None:
+        """Initializes game loop components,
+        entities, score, and cheat toggles."""
         self.maze_rend = _MazeRender(maze)
         self.pacman_rend = _PacmanRender(self.maze_rend, lives)
         max_x = self.maze_rend.maze_width - 1
@@ -553,6 +643,8 @@ class GameLoop:
         self.increase_speed = False
 
     def _create_ghosts(self) -> list[_GhostRender]:
+        """Spawns the four distinct ghost
+        types at designated corner positions."""
 
         ghosttype = [
             _Ghost.GhostType.Blinky, _Ghost.GhostType.Pinky,
@@ -579,6 +671,8 @@ class GameLoop:
     def _run_bfs(self,
                  start: tuple[int, int],
                  target: tuple[int, int]) -> tuple[int, int] | None:
+        """Computes the shortest path
+        step using Breadth-First Search."""
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
         if start == target:
             return None
@@ -623,6 +717,8 @@ class GameLoop:
         return None
 
     def _move_entity(self, entity: _Entity) -> None:
+        """Calculates delta-time continuous
+        movement and intersection steering for entities."""
         if self.state is self.GameState.PAUSED:
             return
 
@@ -654,6 +750,8 @@ class GameLoop:
             self.maze_rend.move_to_cellcenter(entity)
 
     def _handle_keyboard(self) -> None:
+        """Captures directional arrow
+        key inputs from the player."""
         if self.state is self.GameState.PAUSED:
             return
         if rl.is_key_down(rl.KeyboardKey.KEY_DOWN):
@@ -666,6 +764,8 @@ class GameLoop:
             self.pacman_rend.entity.nxt_direction = _Direction.RIGHT
 
     def _set_frightened_direction(self, ghost: _Ghost) -> None:
+        """Calculates fleeing direction
+        for ghosts during frightened panic state."""
         if (rl.vector2_distance(ghost.pos, self.pacman_rend.entity.pos)
                 >= self.maze_rend.wall_length * 5):
             if self.maze_rend.can_move_to_direction(
@@ -703,6 +803,8 @@ class GameLoop:
         ghost.nxt_direction = vectors[allowed[-1]]
 
     def _set_ghost_path(self, ghost: _Ghost) -> None:
+        """Determines next path step for ghosts
+        based on their current behavior state."""
         if not self.maze_rend.is_close_cellcenter(ghost):
             return
 
@@ -736,6 +838,8 @@ class GameLoop:
             ghost.nxt_direction = _Direction.UP
 
     def _check_entity_collision(self) -> bool:
+        """Handles collision checks between
+        Pac-Man and ghosts, managing lives and scores."""
         for gr in self.ghosts_rend:
             distance = rl.vector2_distance(
                 gr.ghost.pos, self.pacman_rend.entity.pos)
@@ -773,6 +877,8 @@ class GameLoop:
         return False
 
     def run(self) -> tuple[int, bool, int] | None:
+        """Executes the main gameplay loop,
+        handling rendering, input, and state updates."""
         pause_menu: PauseMenu = PauseMenu()
         while not rl.window_should_close():
             if rl.is_key_pressed(rl.KeyboardKey.KEY_C):

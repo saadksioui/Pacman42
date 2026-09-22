@@ -10,9 +10,13 @@ import json
 
 
 class LeaderBoardPage:
+    """Manages loading and rendering of
+    the top highscores leaderboard screen."""
     @lru_cache
     @staticmethod
     def _load_scores() -> list[Score]:
+        """Loads and caches highscore entries from
+        the configured persistent JSON file."""
         results = []
         file_path = Path(CONFIG.highscore_path)
         if file_path.exists():
@@ -24,6 +28,8 @@ class LeaderBoardPage:
 
     @classmethod
     def _draw_scores(cls) -> None:
+        """Renders the list of top
+        highscores onto the screen."""
         title_size = SCREEN_HEIGHT // 12
         scores = cls._load_scores()
         title_width = rl.measure_text("High Scores", title_size)
@@ -58,6 +64,8 @@ class LeaderBoardPage:
 
     @classmethod
     def display(cls) -> None:
+        """Runs the leaderboard display loop
+        until the user exits back to the menu."""
         while not rl.window_should_close():
             if rl.is_key_pressed(rl.KeyboardKey.KEY_ENTER):
                 break
@@ -71,12 +79,18 @@ class LeaderBoardPage:
 # SaveScorePage
 ############################################
 class SaveScorePage:
+    """Handles prompt input and persistence
+    for saving a new player highscore."""
     score: int
 
     def __init__(self, score: int) -> None:
+        """Initializes the score saving
+        page with the achieved player score."""
         self.score = score
 
     def _save_in_file(self, name: str) -> None:
+        """Saves and updates the sorted
+        top-10 highscores list in the JSON file."""
         file_path = Path(CONFIG.highscore_path)
         scores: list[dict[str, int | str]] = [
             {
@@ -99,10 +113,9 @@ class SaveScorePage:
             with open(CONFIG.highscore_path, 'w') as file:
                 json.dump(scores, file)
 
-    def _should_save(self) -> bool:
-        return True
-
     def _draw_text(self, s: str) -> None:
+        """Renders the player name entry
+        prompt and current input string."""
         title_text_size = SCREEN_HEIGHT // 12
         normal_text_size = title_text_size // 3
         rl.draw_text(
@@ -128,6 +141,8 @@ class SaveScorePage:
         )
 
     def _read_input(self, s: str) -> str:
+        """Captures and validates keyboard
+        characters typed for the player name."""
         key = rl.get_char_pressed()
         if rl.is_key_pressed(rl.KeyboardKey.KEY_BACKSPACE):
             return s[:-1]
@@ -140,8 +155,8 @@ class SaveScorePage:
         return s
 
     def draw(self) -> None:
-        if not self._should_save():
-            return
+        """Manages the interactive input
+        loop for saving the user's score."""
         name = ""
         while not rl.window_should_close():
             name = self._read_input(name)
@@ -163,8 +178,12 @@ class SaveScorePage:
 # GamePage
 ############################################
 class GamePage:
+    """Orchestrates the multi-level game
+    campaign sequence and loop progression."""
     @staticmethod
     def draw() -> None:
+        """Iterates through configured levels,
+        instantiating mazes and game loops."""
         levels = CONFIG.levels or []
         curr_lives = CONFIG.lives
         curr_score = 0
@@ -193,9 +212,15 @@ class GamePage:
 ############################################
 # InfoPage
 ############################################
+
+
 class InfoPage:
+    """Displays game instructions,
+    rules, and controls screen."""
     @staticmethod
     def draw() -> None:
+        """Renders control references
+        and developer credits until exit."""
         lines = [
             "Arrow Up = Go Up",
             "Arrow Down = Go Down",
@@ -242,6 +267,8 @@ BOTTOM_PADDING = SCREEN_HEIGHT * 15 / 100
 
 
 class _HomeButton:
+    """Encapsulates a clickable/selectable
+    UI menu button widget."""
     rectangle: rl.Rectangle
     text: str
     selected: bool
@@ -249,11 +276,15 @@ class _HomeButton:
     def __init__(
         self, text: str, rectangle: rl.Rectangle, selected: bool = False
     ) -> None:
+        """Initializes a menu button with text,
+        geometry, and selection state."""
         self.rectangle = rectangle
         self.text = text
         self.selected = selected
 
     def draw(self) -> None:
+        """Renders the menu button
+        rectangle and centered text."""
         rl.draw_rectangle(
             int(self.rectangle.x),
             int(self.rectangle.y),
@@ -273,6 +304,8 @@ class _HomeButton:
 
     @classmethod
     def create(cls, options: list[str]) -> list["_HomeButton"]:
+        """Generates a structured list
+        of vertically aligned menu buttons."""
         button_spacing = 15
         button_height = (BOTTOM_SECTION_HEIGHT -
                          BOTTOM_PADDING * 2) / len(options)
@@ -296,11 +329,15 @@ class _HomeButton:
 
 
 class _Logo:
+    """Handles loading and drawing
+    of the main menu game logo texture."""
     texture: rl.Texture = rl.load_texture("assets/logo.png")
     SCALE = (TOP_SECTION_HEIGHT / 2) / texture.height
 
     @classmethod
     def draw(cls) -> None:
+        """Renders the scaled game logo
+        on the main menu screen."""
         rl.draw_texture_ex(
             cls.texture,
             rl.Vector2(
@@ -314,8 +351,12 @@ class _Logo:
 
 
 class HomePage:
+    """Manages the main menu state,
+    navigation, and page routing."""
     @staticmethod
     def buttons(buttons: list[_HomeButton]) -> str | None:
+        """Handles keyboard navigation
+        across menu options and returns selection."""
         selected = -1
         for i, b in enumerate(buttons):
             if rl.is_key_pressed(rl.KeyboardKey.KEY_ENTER) and b.selected:
@@ -341,6 +382,8 @@ class HomePage:
 
     @classmethod
     def start(cls) -> None:
+        """Launches the main menu loop and routes
+        user choices to respective screens."""
         buttons: list[_HomeButton] = _HomeButton.create(
             ["play", "score", "info", "exit"])
         clicked_button: str | None = None

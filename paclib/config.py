@@ -6,11 +6,15 @@ import sys
 
 
 class Level(BaseModel):
+    """Defines the width and height dimensions
+    for an individual maze level."""
     width: int = 15
     height: int = 15
 
 
 class Config(BaseModel):
+    """Parses, validates, and stores global game
+    configurations from a JSON file."""
     highscore_path: str = "highscores.json"
     levels: list[Level] = Field(
         default=[Level() for _ in range(10)],
@@ -25,6 +29,8 @@ class Config(BaseModel):
 
     @classmethod
     def get_config(cls, file_path: str) -> "Config":
+        """Loads and converts configuration data
+        from the given JSON file path."""
         try:
             with open(file_path, "r") as file:
                 return cls._convert_data(file.read())
@@ -40,7 +46,11 @@ class Config(BaseModel):
 
     @classmethod
     def _convert_data(cls, json_data: str) -> "Config":
+        """Strips comments from JSON string
+        and validates it against the schema."""
         def sanitize_json(json_with_comments: str) -> str:
+            """Removes single-line and hash comments
+            from the JSON raw content."""
             new_str = ""
             for ln in json_with_comments.split("\n"):
                 if ln.lstrip(" \t").startswith(("//", "#")):
