@@ -52,9 +52,11 @@ class Config(BaseModel):
         return cls.model_validate_json(json_data)
 
 
-if len(sys.argv) != 2:
-    print("The program must be launched from the command", end=" ")
-    print("line as follows:\n`python3 pac-man.py config.json`")
-    exit(1)
+# if len(sys.argv) != 2:
+#     print("The program must be launched from the command", end=" ")
+#     print("line as follows:\n`python3 pac-man.py config.json`")
+#     exit(1)
 
-CONFIG = Config.get_config(sys.argv[1])
+# CONFIG = Config.get_config(sys.argv[1])
+config_path = sys.argv[1] if len(sys.argv) == 2 else "config.json"
+CONFIG = Config.get_config(config_path)
