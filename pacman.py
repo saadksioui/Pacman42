@@ -1,7 +1,7 @@
 from paclib import HomePage
 
 
-def main():
+def main() -> None:
     try:
         HomePage().start()
     except Exception as e:

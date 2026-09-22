@@ -1,6 +1,6 @@
 from json import JSONDecodeError
 from json import loads as check_valid_json
-from pydantic import BaseModel, Field, ValidationError # type: ignore
+from pydantic import BaseModel, Field, ValidationError
 import random
 import sys
 
@@ -50,6 +50,7 @@ class Config(BaseModel):
         json_data = sanitize_json(json_data)
         check_valid_json(json_data)
         return cls.model_validate_json(json_data)
+
 
 if len(sys.argv) != 2:
     print("The program must be launched from the command", end=" ")

@@ -6,7 +6,6 @@ from collections import deque
 import random
 
 
-
 class _Direction(IntEnum):
     UP = 0b0001
     DOWN = 0b0100
@@ -14,17 +13,18 @@ class _Direction(IntEnum):
     RIGHT = 0b0010
     NONE = 0
 
+
 PACMAN_SPEED: float = 4.2
 CHASE_GHOST_SPEED: float = 2.0
 FRIGHTENED_GHOST_SPEED: float = 2.5
 EATEN_GHOST_SPEED: float = 6.2
+
 
 class _Entity:
     pos: rl.Vector2
     cur_direction: _Direction
     nxt_direction: _Direction
     speed: float
-
 
     def __init__(
         self,
@@ -52,12 +52,12 @@ class _Ghost(_Entity):
     type: GhostType
     state: GhostState
 
-    def __init__(self, start_pos: rl.Vector2, type: GhostType, spawn_pos: tuple[int, int]) -> None:
+    def __init__(self, start_pos: rl.Vector2, type: GhostType,
+                 spawn_pos: tuple[int, int]) -> None:
         super().__init__(start_pos, CHASE_GHOST_SPEED)
         self.type = type
         self.state = _Ghost.GhostState.CHASE
         self.spawn_pos = spawn_pos
-
 
 
 class _Pacman(_Entity):
@@ -67,8 +67,10 @@ class _Pacman(_Entity):
 
 class _Pacgum:
     pos: rl.Vector2
+
     def __init__(self, pos: rl.Vector2) -> None:
         self.pos = pos
+
 
 class _SuperPacgum(_Pacgum):
     pass
@@ -85,22 +87,21 @@ class _MazeRender:
 
     wall_length: int
 
-
     def __init__(self, maze: list[list[int]]) -> None:
         self.maze = maze
         self.maze_height = len(self.maze)
         self.maze_width = len(self.maze[0])
         self.wall_length = self._get_wall_length()
-        self.start_x: int = SCREEN_WIDTH // 2 - (self.maze_width * self.wall_length) // 2
-        self.start_y: int = SCREEN_HEIGHT // 2 - (self.maze_height * self.wall_length) // 2
-
+        self.start_x: int = SCREEN_WIDTH // 2 - \
+            (self.maze_width * self.wall_length) // 2
+        self.start_y: int = SCREEN_HEIGHT // 2 - \
+            (self.maze_height * self.wall_length) // 2
 
     def _get_wall_length(self) -> int:
-            return min(
-                (SCREEN_HEIGHT - MAZE_PADDING * 2) // self.maze_height,
-                (SCREEN_WIDTH - MAZE_PADDING * 2) // self.maze_width
-            )
-
+        return min(
+            (SCREEN_HEIGHT - MAZE_PADDING * 2) // self.maze_height,
+            (SCREEN_WIDTH - MAZE_PADDING * 2) // self.maze_width
+        )
 
     def draw(self) -> None:
         for i, row in enumerate(self.maze):
@@ -128,8 +129,10 @@ class _MazeRender:
                         topright_corner,
                         WALL_THICKNESS, rl.DARKBLUE
                     )
-                    rl.draw_circle_v(topleft_corner, WALL_THICKNESS / 2, rl.DARKBLUE)
-                    rl.draw_circle_v(topright_corner, WALL_THICKNESS / 2, rl.DARKBLUE)
+                    rl.draw_circle_v(
+                        topleft_corner, WALL_THICKNESS / 2, rl.DARKBLUE)
+                    rl.draw_circle_v(
+                        topright_corner, WALL_THICKNESS / 2, rl.DARKBLUE)
                 # west wall
                 if cell & 0b1000:
                     rl.draw_line_ex(
@@ -137,8 +140,12 @@ class _MazeRender:
                         bottomleft_corner,
                         WALL_THICKNESS, rl.DARKBLUE
                     )
-                    rl.draw_circle_v(topleft_corner, WALL_THICKNESS / 2, rl.DARKBLUE)
-                    rl.draw_circle_v(bottomleft_corner, WALL_THICKNESS / 2, rl.DARKBLUE)
+                    rl.draw_circle_v(
+                        topleft_corner, WALL_THICKNESS / 2, rl.DARKBLUE)
+                    rl.draw_circle_v(
+                        bottomleft_corner,
+                        WALL_THICKNESS / 2,
+                        rl.DARKBLUE)
                 # south side
                 if i == self.maze_height - 1:
                     rl.draw_line_ex(
@@ -146,8 +153,14 @@ class _MazeRender:
                         bottomright_corner,
                         WALL_THICKNESS, rl.BLUE
                     )
-                    rl.draw_circle_v(bottomright_corner, WALL_THICKNESS / 2, rl.DARKBLUE)
-                    rl.draw_circle_v(bottomleft_corner, WALL_THICKNESS / 2, rl.DARKBLUE)
+                    rl.draw_circle_v(
+                        bottomright_corner,
+                        WALL_THICKNESS / 2,
+                        rl.DARKBLUE)
+                    rl.draw_circle_v(
+                        bottomleft_corner,
+                        WALL_THICKNESS / 2,
+                        rl.DARKBLUE)
                 # east side
                 if j == self.maze_width - 1:
                     rl.draw_line_ex(
@@ -155,13 +168,16 @@ class _MazeRender:
                         bottomright_corner,
                         WALL_THICKNESS, rl.BLUE
                     )
-                    rl.draw_circle_v(bottomright_corner, WALL_THICKNESS / 2, rl.DARKBLUE)
+                    rl.draw_circle_v(
+                        bottomright_corner,
+                        WALL_THICKNESS / 2,
+                        rl.DARKBLUE)
                 if cell == 0xf:
                     rl.draw_rectangle(
                         int(topleft_corner.x),
                         int(topleft_corner.y),
-                        l := self.wall_length,
-                        l,
+                        line := self.wall_length,
+                        line,
                         rl.DARKBLUE
                     )
 
@@ -174,14 +190,17 @@ class _MazeRender:
         maze_x, maze_y = self.get_cell_cord(entity)
         return self.maze[maze_y][maze_x]
 
-    def can_move_to_direction(self, dirct: _Direction, entity: _Entity) -> bool:
+    def can_move_to_direction(self, dirct: _Direction,
+                              entity: _Entity) -> bool:
         if dirct is _Direction.NONE:
             return False
         return not (self.get_cell(entity) & dirct.value)
 
     def is_close_cellcenter(self, entity: _Entity) -> bool:
-        return ((entity.pos.x - self.start_x) / self.wall_length) % 1 < 0.1\
+        return bool(
+            ((entity.pos.x - self.start_x) / self.wall_length) % 1 < 0.1
             and ((entity.pos.y - self.start_y) / self.wall_length) % 1 < 0.1
+        )
 
     def move_to_cellcenter(self, entity: _Entity) -> None:
         maze_x, maze_y = self.get_cell_cord(entity)
@@ -189,8 +208,9 @@ class _MazeRender:
         entity.pos.y = self.start_y + self.wall_length * maze_y
 
 
-
 TEXTURE: rl.Texture = rl.load_texture("assets/everything.png")
+
+
 class _EntityRender:
 
     entity: _Entity
@@ -200,7 +220,6 @@ class _EntityRender:
 
     src_mask_rec: rl.Rectangle
     dst_mask_rec: rl.Rectangle
-
 
     def __init__(
         self,
@@ -219,9 +238,9 @@ class _EntityRender:
 
     def draw(self) -> None:
         # to switch between sprite sheet
-        FRAME_SPEED = 7
+        frame_speed = 7
         self._frame_count += 1
-        if self._frame_count >= rl.get_fps() / FRAME_SPEED:
+        if self._frame_count >= rl.get_fps() / frame_speed:
             self._frame_count = 0
             self.cur_frame += 1
             if self.cur_frame > self.max_frames:
@@ -240,6 +259,7 @@ class _EntityRender:
             rl.WHITE
         )
 
+
 class _PacmanRender(_EntityRender):
     maze_rend: _MazeRender
     lives: int
@@ -257,7 +277,11 @@ class _PacmanRender(_EntityRender):
             ),
             2,
             rl.Rectangle(0, 0, 16, 16),
-            rl.Rectangle(vct.x, vct.y, maze_rend.wall_length, maze_rend.wall_length)
+            rl.Rectangle(
+                vct.x,
+                vct.y,
+                maze_rend.wall_length,
+                maze_rend.wall_length)
         )
 
     def draw(self) -> None:
@@ -275,21 +299,23 @@ class _GhostRender(_EntityRender):
     maze_rend: _MazeRender
     ghost: _Ghost
 
-
     def __init__(self, maze_rend: _MazeRender, ghost: _Ghost) -> None:
         self.maze_rend = maze_rend
         super().__init__(
             ghost,
             1,
             rl.Rectangle(0, ghost.type.value * 16, 16, 16),
-            rl.Rectangle(ghost.pos.x, ghost.pos.y, maze_rend.wall_length, maze_rend.wall_length)
+            rl.Rectangle(
+                ghost.pos.x,
+                ghost.pos.y,
+                maze_rend.wall_length,
+                maze_rend.wall_length)
         )
         self.ghost = ghost
         self.frightened_timer: float = 0.0
         self.eaten_timer: float = 0.0
 
-
-    def draw(self, game_paused: bool) -> None:
+    def draw(self, game_paused: bool = False) -> None:
         self._cancel_frightened_state(game_paused)
         self._cancel_eaten_state(game_paused)
         idx = {
@@ -303,7 +329,8 @@ class _GhostRender(_EntityRender):
             if self.cur_frame:
                 self.src_mask_rec.x += 16
         if self.ghost.state is _Ghost.GhostState.EATEN:
-            self.src_mask_rec.x = 16 * 8 + (idx[self.entity.cur_direction]) * 16
+            self.src_mask_rec.x = 16 * 8 + \
+                (idx[self.entity.cur_direction]) * 16
         super().draw()
 
     def change_state(self, new_state: _Ghost.GhostState) -> None:
@@ -350,8 +377,6 @@ class _GhostRender(_EntityRender):
             self.change_state(_Ghost.GhostState.CHASE)
 
 
-
-
 class _PacgumRender:
     def __init__(self, maze_rend: _MazeRender) -> None:
         def to_spacgum(x: int, y: int) -> None:
@@ -371,8 +396,12 @@ class _PacgumRender:
                     self.pacgum_map[-1].append(None)
                     continue
                 self.pacgum_map[-1].append(pg := _Pacgum(rl.Vector2(
-                    maze_rend.start_x + maze_rend.wall_length * j + maze_rend.wall_length / 2,
-                    maze_rend.start_y + maze_rend.wall_length * i + maze_rend.wall_length / 2
+                    (maze_rend.start_x
+                     + maze_rend.wall_length * j
+                     + maze_rend.wall_length / 2),
+                    (maze_rend.start_y
+                     + maze_rend.wall_length * i
+                     + maze_rend.wall_length / 2)
                 )))
                 self.pacgum_set.add(pg)
 
@@ -382,7 +411,6 @@ class _PacgumRender:
         to_spacgum(2, 2)
         to_spacgum(maze_width - 3, 2)
         to_spacgum(maze_width - 3, maze_height - 3)
-
 
     def draw(self) -> None:
         for pg in self.pacgum_set:
@@ -400,7 +428,6 @@ class _PacgumRender:
                     self.PACGUM_RADIUS,
                     rl.YELLOW
                 )
-
 
     def pacman_collect(self, pacman: _Entity) -> tuple[bool, int]:
         maze_x, maze_y = self.maze_rend.get_cell_cord(pacman)
@@ -425,7 +452,9 @@ class PauseMenu:
 
     cur_op: int
     font_size: int = SCREEN_HEIGHT // 15
-    start_x: int = SCREEN_HEIGHT // 2 - (font_size * len(options) - font_size // 5 * (len(options) - 1)) // 2
+    start_x: int = SCREEN_HEIGHT // 2 - \
+        (font_size * len(options) - font_size // 5 * (len(options) - 1)) // 2
+
     def __init__(self) -> None:
         self.cur_op = 0
 
@@ -441,7 +470,6 @@ class PauseMenu:
                 self.font_size,
                 rl.YELLOW if i == self.cur_op else rl.WHITE
             )
-
 
     def handle_keyboard(self) -> str | None:
         if rl.is_key_pressed(rl.KeyboardKey.KEY_DOWN):
@@ -460,16 +488,20 @@ class PauseMenu:
                     rl.close_window()
                 case _:
                     return option
-
+        return None
 
 
 class _PacmanLives:
 
-
     @staticmethod
     def draw(lives: int) -> None:
-        dst = rl.Rectangle(10, SCREEN_HEIGHT - MAZE_PADDING, MAZE_PADDING, MAZE_PADDING)
-        src = rl.Rectangle(16,0,16,16)
+        dst = rl.Rectangle(
+            10,
+            SCREEN_HEIGHT -
+            MAZE_PADDING,
+            MAZE_PADDING,
+            MAZE_PADDING)
+        src = rl.Rectangle(16, 0, 16, 16)
         for i in range(lives):
             dst.x = 10 + MAZE_PADDING * i
             rl.draw_texture_pro(
@@ -485,7 +517,6 @@ class GameLoop:
         PLAYING = "PLAYING"
         PAUSED = "PAUSED"
 
-
     maze_rend: _MazeRender
     pacman_rend: _PacmanRender
     ghosts_rend: list[_GhostRender]
@@ -497,7 +528,6 @@ class GameLoop:
     ghosts_frozen: bool
     increase_speed: bool
     spawn_tiles: dict[_Ghost.GhostType, tuple[int, int]]
-
 
     def __init__(self, maze: list[list[int]], lives: int, score: int) -> None:
         self.maze_rend = _MazeRender(maze)
@@ -522,26 +552,31 @@ class GameLoop:
 
     def _create_ghosts(self) -> list[_GhostRender]:
 
-
         ghosttype = [
             _Ghost.GhostType.Blinky, _Ghost.GhostType.Pinky,
             _Ghost.GhostType.Inky, _Ghost.GhostType.Clyde
         ]
 
-        ghosts:list[_GhostRender] = []
+        ghosts: list[_GhostRender] = []
         for gt in ghosttype:
             grid_x, grid_y = self.spawn_tiles[gt]
 
-            pixel_x = self.maze_rend.start_x + (grid_x * self.maze_rend.wall_length)
-            pixel_y = self.maze_rend.start_y + (grid_y * self.maze_rend.wall_length)
+            pixel_x = self.maze_rend.start_x + \
+                (grid_x * self.maze_rend.wall_length)
+            pixel_y = self.maze_rend.start_y + \
+                (grid_y * self.maze_rend.wall_length)
             start_pos = rl.Vector2(pixel_x, pixel_y)
             ghosts.append(
-                _GhostRender(self.maze_rend, _Ghost(start_pos, gt, (grid_x, grid_y)))
+                _GhostRender(
+                    self.maze_rend, _Ghost(
+                        start_pos, gt, (grid_x, grid_y)))
             )
 
         return ghosts
 
-    def _run_bfs(self, start: tuple[int, int], target: tuple[int, int]):
+    def _run_bfs(self,
+                 start: tuple[int, int],
+                 target: tuple[int, int]) -> tuple[int, int] | None:
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
         if start == target:
             return None
@@ -575,14 +610,15 @@ class GameLoop:
             return None
 
         path = []
-        curr = target
-        while curr is not None:
-            path.append(curr)
-            curr = parent[curr]
+        current: tuple[int, int] | None = target
+        while current is not None:
+            path.append(current)
+            current = parent[current]
         path.reverse()
 
         if len(path) > 1:
             return path[1]
+        return None
 
     def _move_entity(self, entity: _Entity) -> None:
         if self.state is self.GameState.PAUSED:
@@ -592,14 +628,17 @@ class GameLoop:
             entity.cur_direction = entity.nxt_direction
             return
 
-        if self.maze_rend.can_move_to_direction(entity.nxt_direction, entity) and entity.nxt_direction is not entity.cur_direction:
+        if (self.maze_rend.can_move_to_direction(entity.nxt_direction, entity)
+                and entity.nxt_direction is not entity.cur_direction):
             if self.maze_rend.is_close_cellcenter(entity):
                 entity.cur_direction = entity.nxt_direction
                 entity.nxt_direction = _Direction.NONE
                 self.maze_rend.move_to_cellcenter(entity)
                 return
-        if self.maze_rend.can_move_to_direction(entity.cur_direction, entity) or not self.maze_rend.is_close_cellcenter(entity):
-            to_move = self.maze_rend.wall_length * entity.speed * rl.get_frame_time()
+        if (self.maze_rend.can_move_to_direction(entity.cur_direction, entity)
+                or not self.maze_rend.is_close_cellcenter(entity)):
+            to_move = (self.maze_rend.wall_length
+                       * entity.speed * rl.get_frame_time())
             match entity.cur_direction:
                 case _Direction.UP:
                     entity.pos.y -= to_move
@@ -624,22 +663,30 @@ class GameLoop:
         elif rl.is_key_down(rl.KeyboardKey.KEY_RIGHT):
             self.pacman_rend.entity.nxt_direction = _Direction.RIGHT
 
-    def _set_frightened_direction(self, ghost: _Ghost):
-        if rl.vector2_distance(ghost.pos, self.pacman_rend.entity.pos) >= self.maze_rend.wall_length * 5:
-            if self.maze_rend.can_move_to_direction(ghost.cur_direction, ghost):
+    def _set_frightened_direction(self, ghost: _Ghost) -> None:
+        if (rl.vector2_distance(ghost.pos, self.pacman_rend.entity.pos)
+                >= self.maze_rend.wall_length * 5):
+            if self.maze_rend.can_move_to_direction(
+                    ghost.cur_direction, ghost):
                 return
             ghost.nxt_direction = random.choice(
                 [
-                    d for d in (_Direction.UP, _Direction.DOWN, _Direction.LEFT, _Direction.RIGHT)
+                    d for d in (_Direction.UP, _Direction.DOWN,
+                                _Direction.LEFT, _Direction.RIGHT)
                     if self.maze_rend.can_move_to_direction(d, ghost)
                 ]
             )
             return
         directions = {
-            _Direction.UP: rl.Vector2(ghost.pos.x, ghost.pos.y - self.maze_rend.wall_length),
-            _Direction.LEFT: rl.Vector2(ghost.pos.x - self.maze_rend.wall_length, ghost.pos.y),
-            _Direction.DOWN: rl.Vector2(ghost.pos.x, ghost.pos.y + self.maze_rend.wall_length),
-            _Direction.RIGHT: rl.Vector2(ghost.pos.x + self.maze_rend.wall_length, ghost.pos.y)
+            _Direction.UP: rl.Vector2(ghost.pos.x, ghost.pos.y
+                                      - self.maze_rend.wall_length),
+            _Direction.LEFT: rl.Vector2(ghost.pos.x -
+                                        self.maze_rend.wall_length,
+                                        ghost.pos.y),
+            _Direction.DOWN: rl.Vector2(ghost.pos.x, ghost.pos.y +
+                                        self.maze_rend.wall_length),
+            _Direction.RIGHT: rl.Vector2(
+                ghost.pos.x + self.maze_rend.wall_length, ghost.pos.y)
         }
         vectors = {v: k for k, v in directions.items()}
         allowed: list[rl.Vector2] = []
@@ -648,15 +695,10 @@ class GameLoop:
                 allowed.append(vct)
         allowed = sorted(
             allowed,
-            key=lambda vct: rl.vector2_distance(vct, self.pacman_rend.entity.pos)
+            key=lambda vct: rl.vector2_distance(
+                vct, self.pacman_rend.entity.pos)
         )
         ghost.nxt_direction = vectors[allowed[-1]]
-
-
-
-
-
-
 
     def _set_ghost_path(self, ghost: _Ghost) -> None:
         if not self.maze_rend.is_close_cellcenter(ghost):
@@ -691,9 +733,10 @@ class GameLoop:
         elif dy == -1:
             ghost.nxt_direction = _Direction.UP
 
-    def _check_entity_collision(self):
+    def _check_entity_collision(self) -> bool:
         for gr in self.ghosts_rend:
-            distance = rl.vector2_distance(gr.ghost.pos, self.pacman_rend.entity.pos)
+            distance = rl.vector2_distance(
+                gr.ghost.pos, self.pacman_rend.entity.pos)
             if distance <= self.maze_rend.wall_length * 0.5:
                 if gr.ghost.state == gr.ghost.GhostState.CHASE:
                     if not self.invincible:
@@ -702,17 +745,22 @@ class GameLoop:
                             return True
                         mid_x = self.maze_rend.maze_width // 2
                         mid_y = self.maze_rend.maze_height // 2
-                        respawn_x = self.maze_rend.start_x + (mid_x * self.maze_rend.wall_length)
-                        respawn_y = self.maze_rend.start_y + (mid_y * self.maze_rend.wall_length)
+                        respawn_x = self.maze_rend.start_x + \
+                            (mid_x * self.maze_rend.wall_length)
+                        respawn_y = self.maze_rend.start_y + \
+                            (mid_y * self.maze_rend.wall_length)
 
-                        self.pacman_rend.entity.pos = rl.Vector2(respawn_x, respawn_y)
+                        self.pacman_rend.entity.pos = rl.Vector2(
+                            respawn_x, respawn_y)
                         self.pacman_rend.entity.cur_direction = _Direction.NONE
                         self.pacman_rend.entity.nxt_direction = _Direction.NONE
                         for g in self.ghosts_rend:
                             pos_x, pos_y = self.spawn_tiles[g.ghost.type]
 
-                            pixel_x = self.maze_rend.start_x + (pos_x * self.maze_rend.wall_length)
-                            pixel_y = self.maze_rend.start_y + (pos_y * self.maze_rend.wall_length)
+                            pixel_x = self.maze_rend.start_x + \
+                                (pos_x * self.maze_rend.wall_length)
+                            pixel_y = self.maze_rend.start_y + \
+                                (pos_y * self.maze_rend.wall_length)
                             g.ghost.pos = rl.Vector2(pixel_x, pixel_y)
                             g.ghost.cur_direction = _Direction.NONE
                             g.ghost.nxt_direction = _Direction.NONE
@@ -768,7 +816,8 @@ class GameLoop:
             if self._check_entity_collision():
                 return (self.score, False, self.pacman_rend.lives)
 
-            is_super_pacgum, score = self.pacgum_rend.pacman_collect(self.pacman_rend.entity)
+            is_super_pacgum, score = self.pacgum_rend.pacman_collect(
+                self.pacman_rend.entity)
             self.score += score
             if is_super_pacgum:
                 for gr in self.ghosts_rend:
@@ -791,7 +840,9 @@ class GameLoop:
             rl.draw_text("Cheat Mode: C", 7, 127, 25, rl.WHITE)
 
             if self.state is self.GameState.PAUSED:
-                rl.draw_rectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (0, 0, 0, 0xde))
+                rl.draw_rectangle(
+                    0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (0, 0, 0, 0xde))
                 pause_menu.draw()
 
             rl.end_drawing()
+        return None
