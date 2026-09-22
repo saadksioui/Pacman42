@@ -183,7 +183,9 @@ class _MazeRender:
 
     def get_cell_cord(self, entity: _Entity) -> tuple[int, int]:
         maze_x = round((entity.pos.x - self.start_x) / self.wall_length)
+        maze_x = min(maze_x, self.maze_width - 1)
         maze_y = round((entity.pos.y - self.start_y) / self.wall_length)
+        maze_y = min(maze_y, self.maze_height - 1)
         return maze_x, maze_y
 
     def get_cell(self, entity: _Entity) -> int:
@@ -812,6 +814,7 @@ class GameLoop:
                 for g in self.ghosts_rend:
                     self._set_ghost_path(g.ghost)
                     self._move_entity(g.entity)
+
             self._move_entity(self.pacman_rend.entity)
             if self._check_entity_collision():
                 return (self.score, False, self.pacman_rend.lives)
