@@ -15,3 +15,11 @@ clean:
 lint:
 	flake8 pacman.py paclib/
 	mypy pacman.py paclib/ --warn-return-any --warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs --check-untyped-defs
+
+package:
+	pip install nuitka patchelf
+	python3 -m nuitka --standalone --include-data-dir=assets=assets pacman.py
+	cp config.json pacman.dist/
+	mv pacman.dist PacMan-1337
+	zip -r PacMan-1337.zip PacMan-1337
+	@echo "Packaging complete! PacMan-1337.zip is ready for Itch.io."
