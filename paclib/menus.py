@@ -190,6 +190,43 @@ class GamePage:
         if not rl.window_should_close():
             SaveScorePage(curr_score).draw()
 
+############################################
+# InfoPage
+############################################
+class InfoPage:
+    @staticmethod
+    def draw() -> None:
+        lines = [
+            "Arrow Up = Go Up",
+            "Arrow Down = Go Down",
+            "Arrow Left = Go Left",
+            "Arrow Right = Go Right",
+            "C = Cheat Mode",
+        ]
+        while not rl.window_should_close():
+            if rl.is_key_pressed(rl.KeyboardKey.KEY_ENTER):
+                return
+            rl.begin_drawing()
+            rl.clear_background(rl.BLACK)
+            x, y, spacing, font_size = 20, 20, 30, 24
+            for i, line in enumerate(lines):
+                rl.draw_text(line, x, y + i * spacing, font_size, rl.WHITE)
+            rl.draw_text(
+                "Created by: nullmaz & saadksioui",
+                20,
+                SCREEN_HEIGHT - 40,
+                20,
+                rl.WHITE
+            )
+            rl.draw_text(
+                "Tested by: Gx-Nasr",
+                20,
+                SCREEN_HEIGHT - 40 * 2,
+                20,
+                rl.WHITE
+            )
+            rl.end_drawing()
+
 
 ############################################
 # HomePage
@@ -305,7 +342,7 @@ class HomePage:
     @classmethod
     def start(cls) -> None:
         buttons: list[_HomeButton] = _HomeButton.create(
-            ["play", "score", "exit"])
+            ["play", "score", "info", "exit"])
         clicked_button: str | None = None
         skip_click = False
         while not rl.window_should_close():
@@ -325,6 +362,9 @@ class HomePage:
                 skip_click = True
             elif clicked_button == "play":
                 GamePage.draw()
+                skip_click = True
+            elif clicked_button == "info":
+                InfoPage.draw()
                 skip_click = True
             else:
                 return
