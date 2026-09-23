@@ -14,7 +14,7 @@
 <img src="screenshots/game.png" alt="Game Level 1">
 <img src="screenshots/game2.png" alt="Game Level 2">
 <img src="screenshots/pause.png" alt="Pause Page">
-<img src="screenshots/score.png" alt="Score Page">
+<img src="screenshots/scores.png" alt="Score Page">
 
 ## Description
 
