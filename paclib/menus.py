@@ -1,7 +1,6 @@
 from .config import CONFIG
 from mazegenerator import MazeGenerator
 from .score import Score
-from functools import lru_cache
 from .engine import GameLoop
 from ._gui_init import SCREEN_HEIGHT, SCREEN_WIDTH
 import pyray as rl
@@ -12,7 +11,6 @@ import json
 class LeaderBoardPage:
     """Manages loading and rendering of
     the top highscores leaderboard screen."""
-    @lru_cache
     @staticmethod
     def _load_scores() -> list[Score]:
         """Loads and caches highscore entries from

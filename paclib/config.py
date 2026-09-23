@@ -36,10 +36,10 @@ class Config(BaseModel):
                 return cls._convert_data(file.read())
         except OSError as e:
             print("OSError:", e)
-            exit(1)
+            sys.exit(1)
         except JSONDecodeError:
             print("JSON: unvalid json")
-            exit(1)
+            sys.exit(1)
         except ValidationError:
             print(f"Warning: using default because {file_path} is broken")
             return Config()
@@ -65,6 +65,6 @@ class Config(BaseModel):
 if len(sys.argv) != 2:
     print("The program must be launched from the command", end=" ")
     print("line as follows:\n`python3 pac-man.py config.json`")
-    exit(1)
+    sys.exit(1)
 
 CONFIG = Config.get_config(sys.argv[1])

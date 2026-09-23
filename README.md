@@ -2,6 +2,12 @@
 
 # Pacman
 
+
+<p align="center">
+  <img src="screenshots/project_score.png" alt="Alternate Text" width="200">
+</p>
+
+
 ## Description
 
 A from-scratch recreation of the classic 1980 arcade game Pac-Man, built in Python with an object-oriented, modular architecture. The game features JSON-based configuration, procedurally generated mazes (via an externally assigned `mazegenerator` package), autonomous ghost AI with arcade-authentic personalities, a persistent highscore system, and a hardware-accelerated UI using **Pyray (Raylib)**.
@@ -140,3 +146,30 @@ chmod +x pacman.bin
 
 **AI usage:**
 AI was used strictly as a technical mentor, architecture consultant, and code reviewer. It was not used as an automated code generator. AI helped explain delta-time physics trade-offs, diagnosed floating-point logic bugs (such as wall-tunneling and BFS infinite loops), and assisted in scaffolding this documentation. No production logic in this repository was written blindly by AI without manual engineering, testing, and integration.
+
+
+## Interfaces
+
+### Menu Page
+
+<p align="center">
+  <img src="screenshots/menu.png" alt="Alternate Text" width="500">
+</p>
+
+### Game
+
+<p align="center">
+  <img src="screenshots/game.png" alt="Alternate Text" width="500">
+</p>
+
+### Pause
+
+<p align="center">
+  <img src="screenshots/pause.png" alt="Alternate Text" width="500">
+</p>
+
+### Score
+
+<p align="center">
+  <img src="screenshots/score.png" alt="Alternate Text" width="500">
+</p>

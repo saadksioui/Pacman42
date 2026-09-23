@@ -18,8 +18,9 @@ lint:
 
 package:
 	pip install nuitka patchelf
-	python3 -m nuitka --standalone --include-data-dir=assets=assets pacman.py
+	python3 -m nuitka --standalone --include-data-dir=assets=assets --include-package=pydantic --include-package=pydantic_core --include-module=contextvars --include-module=decimal --collect-all=pyray --collect-all=raylib pacman.py
 	cp config.json pacman.dist/
 	mv pacman.dist PacMan-1337
+	rm -rf pacman.build
 	zip -r PacMan-1337.zip PacMan-1337
 	@echo "Packaging complete! PacMan-1337.zip is ready for Itch.io."
