@@ -4,9 +4,17 @@
 
 
 <p align="center">
-  <img src="screenshots/project_score.png" alt="Alternate Text" width="200">
+  <img src="screenshots/project_score.png" alt="Project Score" width="200">
 </p>
 
+
+## Interfaces
+
+<img src="screenshots/menu.png" alt="Menu Page">
+<img src="screenshots/game.png" alt="Game Level 1">
+<img src="screenshots/game2.png" alt="Game Level 2">
+<img src="screenshots/pause.png" alt="Pause Page">
+<img src="screenshots/score.png" alt="Score Page">
 
 ## Description
 
@@ -148,28 +156,3 @@ chmod +x pacman.bin
 AI was used strictly as a technical mentor, architecture consultant, and code reviewer. It was not used as an automated code generator. AI helped explain delta-time physics trade-offs, diagnosed floating-point logic bugs (such as wall-tunneling and BFS infinite loops), and assisted in scaffolding this documentation. No production logic in this repository was written blindly by AI without manual engineering, testing, and integration.
 
 
-## Interfaces
-
-### Menu Page
-
-<p align="center">
-  <img src="screenshots/menu.png" alt="Alternate Text" width="500">
-</p>
-
-### Game
-
-<p align="center">
-  <img src="screenshots/game.png" alt="Alternate Text" width="500">
-</p>
-
-### Pause
-
-<p align="center">
-  <img src="screenshots/pause.png" alt="Alternate Text" width="500">
-</p>
-
-### Score
-
-<p align="center">
-  <img src="screenshots/score.png" alt="Alternate Text" width="500">
-</p>
