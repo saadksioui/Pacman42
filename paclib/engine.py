@@ -912,7 +912,7 @@ class GameLoop:
                 if rl.is_key_pressed(rl.KeyboardKey.KEY_F5):
                     self.increase_speed = not self.increase_speed
                     if self.increase_speed:
-                        self.pacman_rend.entity.speed = 10.0
+                        self.pacman_rend.entity.speed = 5.0
                     else:
                         self.pacman_rend.entity.speed = PACMAN_SPEED
             self._handle_keyboard()
